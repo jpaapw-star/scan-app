@@ -561,7 +561,7 @@
   // ---------- chamadas ao Google ----------
   function ErroApp(e) { this.codigo = e.codigo; this.message = e.mensagem; this.app = true; }
   // Chamadas que são sempre da própria conta, mesmo ajudando alguém.
-  var sozinho = { apiIniciar: 1, apiDestinoAjuda: 1, apiParaAprovar: 1, apiAprovar: 1, apiRecusar: 1, apiTrocarCodigo: 1 };
+  var sozinho = { apiIniciar: 1, apiDestinoAjuda: 1, apiParaAprovar: 1, apiNfsAprovar: 1, apiAprovar: 1, apiRecusar: 1, apiTrocarCodigo: 1 };
   /**
    * Site com login do Google (fora do Apps Script): as mesmas funções do servidor vão pela Apps Script API
    * (scripts.run), com o token da conta que a pessoa escolheu. Assim dá para trocar de conta na mesma janela.
@@ -1232,6 +1232,9 @@
       enviarFotos(c).catch(function () { /* tenta de novo ao salvar */ });
       c.resultado = r;
       guardarEtiquetas(r, r.campos.EAN && r.campos.EAN.valor);
+      // EAN que só a IA leu: a memória é consultada agora, fora da leitura, e fica pronta para a próxima unidade.
+      var eanLido = eanDe(r.campos.EAN && r.campos.EAN.valor);
+      if (eanLido && !(eanLido in previa)) preconsultar([{ valor: eanLido, formato: 'EAN_13' }]);
       if (r.memoria && r.memoria.confiavel && r.campos.DESCRICAO && r.campos.DESCRICAO.origem === 'memoria') guardarMemoria(eanDe(r.campos.EAN.valor), r.memoria);
       var repetido = serialJaSalvo(c, r.campos.SERIAL && r.campos.SERIAL.valor);
       if (repetido) { r.divergencias = (r.divergencias || []).concat([repetido]); c.serialRepetido = r.campos.SERIAL.valor; }
@@ -1289,6 +1292,40 @@
    * Pergunta ao servidor quem é o produto destas fotos ({ n, full, driveId, codigos, visual }).
    * Devolve a resposta com r.servidor = tempo de cada etapa somado (memória, IA, internet, fila).
    */
+  /**
+   * Corrida entre IAs: o Google às vezes segura um pedido 15 s ou mais antes de dizer "ocupada". Em vez
+   * de esperar, logo depois do primeiro pedido sai um segundo, que começa pela próxima IA da fila, e fica
+   * valendo o que responder primeiro com a IA ok. Cada IA tem a própria cota grátis.
+   */
+  var CORRIDA_MS = 1500;
+  function correrIA(pedido) {
+    return new Promise(function (ok, falha) {
+      var pronto = false, guardada = null, pendentes = 1, erro = null, segundo = null;
+      function chegou(r) {
+        pendentes--;
+        if (pronto) return;
+        // Veio sem a IA (ocupada) e a outra ainda pode responder: espera a outra.
+        if (r && r.iaDeNovo && (pendentes > 0 || !segundo)) { guardada = guardada || r; if (!segundo) lancar(); return; }
+        pronto = true; clearTimeout(relogio); ok(r);
+      }
+      function caiu(e) {
+        pendentes--;
+        erro = erro || e;
+        if (pronto) return;
+        if (!segundo) { lancar(); return; }
+        if (pendentes <= 0) { pronto = true; if (guardada) ok(guardada); else falha(erro); }
+      }
+      function lancar() {
+        if (segundo || pronto) return;
+        pendentes++;
+        segundo = analisar(Object.assign({}, pedido, { iaPular: 1 }));
+        segundo.then(chegou, caiu);
+      }
+      var relogio = setTimeout(lancar, CORRIDA_MS);
+      analisar(pedido).then(chegou, caiu);
+    });
+  }
+
   function identificar(fotos, o) {
     var servidor = { memoria: 0, ia: 0, internet: 0, total: 0, espera: 0 };
     function somar(t) { Object.keys(servidor).forEach(function (k) { servidor[k] += (t && t[k]) || 0; }); }
@@ -1306,7 +1343,7 @@
       // Para a IA vai só a parte da etiqueta (menos dados, resposta mais rápida); no Drive fica a foto inteira.
       return Promise.all(fotos.map(recortarEtiqueta)).then(function (imgs) {
         pedido.imagens = imgs;
-        return analisar(pedido).then(fim);
+        return correrIA(pedido).then(fim);
       });
     };
     // Caminho rápido: com código de barras lido no aparelho, pergunta primeiro sem as fotos (bem menos dados).
@@ -1329,7 +1366,7 @@
    * Se você tirar ou acrescentar uma foto, o grupo muda e aquele produto é lido de novo.
    */
   var adiantadas = {}, relogioAdiantar = null;
-  var ESPERA_ADIANTAR_MS = 300, ESPERA_PREVIA_MS = 15000, adiantarDesde = 0;
+  var ESPERA_ADIANTAR_MS = 300, ESPERA_PREVIA_MS = 1500, adiantarDesde = 0;   // a IA não espera a memória
   var ESPERA_ADIANTADA_MS = 20000;   // depois do Enviar, quanto a leitura adiantada pode demorar antes de ler de novo
   function assinaturaGrupo(grupo) { return grupo.map(function (f) { return f.id; }).join('|'); }
   function fotosDoCartao(grupo) { return grupo.map(function (f, i) { return { n: i + 1, thumb: f.thumb, full: f.full, codigos: f.codigos || [], visual: f.visual, quando: f.quando }; }); }
@@ -1340,8 +1377,8 @@
   function adiantar() {
     if (!app.planilha || !app.fotos.length) return;
     if (app.fotos.some(function (f) { return !f.full || !f.codigos; })) { agendarAdiantar(); return; }   // ainda lendo
-    // A memória já está sendo consultada pela foto (preconsulta): espera ela responder (até 15 s) para a
-    // leitura achar a resposta guardada, em vez de perguntar de novo ao mesmo tempo e esperar em dobro.
+    // A memória já está sendo consultada pela foto (preconsulta): espera no máximo 1,5 s. Depois a leitura
+    // começa assim mesmo; se a memória responder antes da IA, a resposta dela ainda vale.
     var pendente = app.fotos.some(function (f) {
       return (f.codigos || []).some(function (k) { return ehEan(k.valor, k.formato) && previa[k.valor] === null; });
     });
@@ -2462,14 +2499,44 @@
 
   /** Lista do que chegou com o seu código, separada por quem mandou: aprovar (com correção) ou recusar. */
   function abrirAprovar() {
-    abrirPainel('aprovar', 'Para aprovar', '<div class="estado-lista" id="estadoAprovar"><span class="giro"></span> Buscando…</div><div id="listaAprovar"></div>');
+    // A lista que já veio com a pergunta leve aparece na hora; a atualização chega por trás.
+    var tem = app.aprovar && app.aprovar.length;
+    abrirPainel('aprovar', 'Para aprovar', '<div class="estado-lista" id="estadoAprovar">' + (tem ? '' : '<span class="giro"></span> Buscando…') + '</div><div id="listaAprovar"></div>');
+    if (tem) { renderAprovar(); sugerirNfsAprovar(); }
     chamar('apiParaAprovar', nfDoDono()).then(function (r) {
-      app.aprovar = r.itens;
       app.confiaveis = r.confiaveis || app.confiaveis || [];
-      mostrarAbaAprovar(r.itens.length);
-      renderAprovar();
-      if (r.automaticos) aviso(r.automaticos === 1 ? 'Um produto de quem você confia entrou sozinho na planilha.' : r.automaticos + ' produtos de quem você confia entraram sozinhos na planilha.');
-    }).catch(function (e) { if ($('estadoAprovar')) $('estadoAprovar').textContent = e.message; });
+      receberAprovar(r.itens);
+    }).catch(function (e) { if (!tem && $('estadoAprovar')) $('estadoAprovar').textContent = e.message; });
+  }
+  /** Lista nova do servidor: mantém a NF já sugerida e só redesenha se mudou alguma coisa. */
+  function receberAprovar(itens) {
+    var antes = app.aprovar || [], sugeridas = {};
+    antes.forEach(function (it) { if (it.nfSugerida != null) sugeridas[it.id] = it.nfSugerida; });
+    var igual = antes.length === itens.length && antes.every(function (it, i) { return it.id === itens[i].id; });
+    itens.forEach(function (it) { if (sugeridas[it.id] != null) { it.nfSugerida = sugeridas[it.id]; it.campos = Object.assign({}, it.campos, { NFE: it.nfSugerida }); } });
+    app.aprovar = itens;
+    mostrarAbaAprovar(itens.length);
+    if (igual && app.painel === 'aprovar' && $('listaAprovar') && $('listaAprovar').innerHTML) return;
+    renderAprovar();
+    sugerirNfsAprovar();
+  }
+  /** A NF que vai ser gravada (planilha + notas) chega depois e preenche o campo, se você não mexeu nele. */
+  var buscandoNfsAprovar = false;
+  function sugerirNfsAprovar() {
+    var falta = (app.aprovar || []).some(function (it) { return it.nfSugerida == null; });
+    if (!falta || buscandoNfsAprovar || app.painel !== 'aprovar') return;
+    buscandoNfsAprovar = true;
+    chamar('apiNfsAprovar', nfDoDono()).then(function (r) {
+      (app.aprovar || []).forEach(function (it, i) {
+        var nf = r.nfs[it.id];
+        if (nf == null) return;
+        var velha = (it.campos || {}).NFE || '';
+        it.nfSugerida = nf;
+        it.campos = Object.assign({}, it.campos, { NFE: nf });
+        var inp = document.querySelector('[data-aprovar="' + i + '"] [data-campo="NFE"]');
+        if (inp && inp.value.trim() === velha) inp.value = nf;
+      });
+    }).catch(function () { /* fica como veio */ }).then(function () { buscandoNfsAprovar = false; });
   }
   var CAMPOS_APROVAR = [['DESCRICAO', 'Descrição'], ['SERIAL', 'Serial / IMEI'], ['EAN', 'EAN'], ['QTDE', 'Qtde'], ['CAIXA', 'Caixa'], ['NFE', 'NF']];
   /** As NFs da sua entrada atual: o que chega de quem ajuda é ligado a elas primeiro. */
@@ -2510,14 +2577,6 @@
         '<button class="btn sec" type="button" data-confiar="' + gi + '">' + (confia ? 'Parar de aprovar sozinho' : 'Aprovar sozinho daqui em diante') + '</button></div>' +
       (confia ? '<p class="dica">O que ' + esc(vendo.nome) + ' manda entra direto na planilha, sem passar por aqui, mesmo com o SCAN fechado (o Google confere a cada 5 minutos).</p>' : '') +
       vendo.itens.map(function (x) { return cartaoAprovar(x.it, x.i); }).join('');
-  }
-  function cartaoAprovar(it, i) {
-    var fotos = (it.fotos || []).map(function (f, n) { return '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w240" alt="Foto ' + (n + 1) + '" loading="lazy"></a>'; }).join('');
-    return '<div class="registro aprovar" data-aprovar="' + i + '">' +
-      '<div class="t">aba ' + esc(it.aba) + ' · ' + hora(it.quando) + '</div>' +
-      (fotos ? '<div class="tiras">' + fotos + '</div>' : '') +
-      CAMPOS_APROVAR.map(function (c) { return '<label class="rotulo">' + c[1] + '</label><input class="entrada" data-campo="' + c[0] + '" value="' + esc((it.campos || {})[c[0]] || '') + '">'; }).join('') +
-      '<div class="rodape dois"><button class="btn principal" type="button" data-aprovar-sim="' + i + '">Aprovar</button><button class="btn sec" type="button" data-aprovar-nao="' + i + '">Recusar</button></div></div>';
   }
   function cartaoAprovar(it, i) {
     var fotos = (it.fotos || []).map(function (f, n) { return '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w240" alt="Foto ' + (n + 1) + '" loading="lazy"></a>'; }).join('');
@@ -2580,10 +2639,10 @@
     vendoPendencias = true;
     chamar('apiPendencias', nfDoDono()).then(function (r) {
       var antes = app.paraAprovar || 0;
-      mostrarAbaAprovar(r.paraAprovar);
+      // A lista vem junto: abrir "Para aprovar" depois mostra tudo na hora.
+      if (r.itens) receberAprovar(r.itens); else mostrarAbaAprovar(r.paraAprovar);
       if (r.automaticos) aviso(r.automaticos === 1 ? 'Um produto de quem você confia entrou na planilha.' : r.automaticos + ' produtos de quem você confia entraram na planilha.');
-      if (app.painel === 'aprovar' && r.paraAprovar !== (app.aprovar || []).length) abrirAprovar();
-      else if (r.paraAprovar > antes) { bip('conferir'); aviso(r.nomes.length === 1 ? r.nomes[0] + ' mandou um produto para aprovar.' : 'Chegaram produtos para aprovar.'); }
+      if (r.paraAprovar > antes) { bip('conferir'); aviso(r.nomes.length === 1 ? r.nomes[0] + ' mandou um produto para aprovar.' : 'Chegaram produtos para aprovar.'); }
     }).catch(function () { /* pergunta de novo depois */ }).then(function () { vendoPendencias = false; });
   }
   function ligarPendencias() {
