@@ -107,6 +107,10 @@
   .pilula span { overflow: hidden; text-overflow: ellipsis; }
   .pilula svg { width: 16px; height: 16px; flex: none; opacity: .8; }
   .pilula.clara { background: var(--forte); color: var(--sobre-forte); font-weight: 600; }
+  /* A lista de NFs fica invisível por cima da pílula: tocar abre a escolha nativa do celular. */
+  .nf-ver-caixa { position: relative; display: inline-flex; max-width: 100%; }
+  .nf-ver { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+  .pilula .seta { width: 14px; height: 14px; opacity: .6; }
   .nfe-campo { margin-top: 10px; }
   .hero input.entrada { background: var(--campo-fundo); border-color: var(--linha-forte); }
   .hero input.entrada:focus { border-color: var(--forte); box-shadow: none; }
@@ -137,8 +141,15 @@
   }
   .bolinha { position: absolute; top: 4px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--forte); color: var(--sobre-forte); font-size: 11px; line-height: 18px; font-weight: 700; }
   .nav button.ativo .bolinha { background: var(--sobre-forte); color: var(--forte); }
+  /* A aba "Aprovar" só existe quando há algo esperando: com ela, cinco colunas. */
+  .com-aprovar .nav { grid-template-columns: repeat(5, 1fr); }
+  .com-aprovar .nav button { font-size: 10px; }
+  .modo-ajuda.com-aprovar .nav { grid-template-columns: repeat(2, 1fr); }
+  .aud-inicio { grid-column: 1 / -1; margin-top: 10px; }
+  .aud-inicio .secao { margin: 0 0 8px; }
+  .situacao.pessoa .t .sub { color: var(--suave); font-weight: 400; font-size: 13px; margin-left: 8px; }
   /* Ajudando outra pessoa: só ler e mandar (sem notas e sem histórico da planilha dela). */
-  .modo-ajuda #btnNotas, .modo-ajuda #btnHistorico, .modo-ajuda #btnNfeHero { display: none; }
+  .modo-ajuda #btnNotas, .modo-ajuda #btnHistorico, .modo-ajuda #btnNfeHero, .modo-ajuda #btnAprovar { display: none; }
   .modo-ajuda .nav { grid-template-columns: repeat(2, 1fr); }
 
   main { max-width: 1100px; margin: 0 auto; padding: 16px 14px calc(var(--nav) + 34px + env(safe-area-inset-bottom)); display: grid; gap: 16px; }
@@ -393,10 +404,14 @@
           <span>Histórico</span>
           <span class="bolinha oculto" id="bolinhaPendentes"></span>
         </button>
+        <button type="button" id="btnAprovar" class="oculto" aria-label="Aprovar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg>
+          <span>Aprovar</span>
+          <span class="bolinha" id="bolinhaAprovar">1</span>
+        </button>
         <button type="button" id="btnConfig" aria-label="Situação">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
           <span>Situação</span>
-          <span class="bolinha oculto" id="bolinhaConfig">!</span>
         </button>
       </nav>
     </div>
@@ -408,11 +423,16 @@
         <span class="legenda" id="totalCaixaTxt">produtos nesta caixa na planilha</span>
       </div>
       <div class="hero-linha">
-        <button class="pilula" id="btnNfeHero" type="button">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
-          <span id="nfeResumo">Sem nota fiscal</span>
-        </button>
+        <span class="nf-ver-caixa">
+          <button class="pilula" id="btnNfeHero" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+            <span id="nfeResumo">Sem nota fiscal</span>
+            <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          <select id="nfVer" class="nf-ver" aria-label="Qual NF você está vendo"></select>
+        </span>
       </div>
+      <div class="aud-inicio oculto" id="audInicio"></div>
       <div class="nfe-campo oculto" id="nfeBloco">
         <input class="entrada" id="nfe" inputmode="numeric" autocomplete="off" placeholder="Número da NF ou chave de 44 dígitos">
       </div>
@@ -1456,12 +1476,55 @@
     String(v || '').split(/[,;\/|]+/).forEach(function (t) { var n = numeroNf(t); if (n && l.indexOf(n) < 0) l.push(n); });
     return l;
   }
+  /** A NF que você está vendo na tela inicial ('' = todas desta entrada). Só vale se ainda estiver na entrada. */
+  function nfVendo() {
+    var l = numerosNf($('nfe').value), v = lembrar('nfVendo', '');
+    return l.indexOf(v) >= 0 ? v : (l.length === 1 ? l[0] : '');
+  }
   function mostrarNfe() {
-    var v = $('nfe').value.trim(), l = numerosNf(v);
+    var v = $('nfe').value.trim(), l = numerosNf(v), ver = nfVendo();
     var pr = nfAparelho.progresso && nfAparelho.chave === chaveNf() ? nfAparelho.progresso : null;
-    $('nfeResumo').textContent = (!v ? 'Sem nota fiscal' : l.length > 1 ? l.length + ' NFs: ' + l.join(', ') : 'NF ' + (l[0] || v)) +
-      (v && pr && pr.total ? ' · ' + pr.lidos + ' de ' + pr.total + ' lidos' : '');
+    var dela = ver && pr ? (nfAparelho.notas || []).filter(function (n) { return n.numero === ver; })[0] : null;
+    var lidos = dela ? dela.lidos : pr && pr.lidos, total = dela ? dela.total : pr && pr.total;
+    $('nfeResumo').textContent = (!v ? 'Sem nota fiscal' : ver ? 'NF ' + ver : l.length + ' NFs: ' + l.join(', ')) +
+      (v && total ? ' · ' + lidos + ' de ' + total + ' lidos' : '');
     $('btnNfeHero').className = 'pilula' + (v ? ' clara' : '');
+    montarNfVer();
+  }
+  /**
+   * Escolha da NF pela pílula da tela inicial: as NFs desta entrada (e "Todas"), as outras notas da
+   * planilha (escolher uma junta à entrada) e o painel Nota fiscal para adicionar ou tirar.
+   */
+  function montarNfVer() {
+    var sel = $('nfVer');
+    if (!sel) return;
+    var l = numerosNf($('nfe').value), ver = nfVendo();
+    var outras = (app.notasPlanilha || []).filter(function (n) { return l.indexOf(n.numero) < 0; }).slice(-30).reverse();
+    var html = '';
+    if (l.length > 1) html += '<option value=""' + (!ver ? ' selected' : '') + '>Todas desta entrada (' + l.length + ')</option>';
+    html += l.map(function (n) { return '<option value="' + esc(n) + '"' + (n === ver ? ' selected' : '') + '>NF ' + esc(n) + '</option>'; }).join('');
+    if (!l.length) html += '<option value="" selected>Sem nota fiscal</option>';
+    if (outras.length) html += '<optgroup label="Outras notas desta planilha">' + outras.map(function (n) {
+      return '<option value="+' + esc(n.numero) + '">NF ' + esc(n.numero) + (n.emitente ? ' · ' + esc(n.emitente) : '') + '</option>';
+    }).join('') + '</optgroup>';
+    html += '<option value="*">Adicionar ou tirar notas…</option>';
+    sel.innerHTML = html;
+  }
+  function escolherNfVer(v) {
+    if (v === '*') { montarNfVer(); abrirNotas(); return; }
+    if (v.charAt(0) === '+') { v = v.slice(1); adicionarNf(v); }
+    guardar('nfVendo', v);
+    mostrarNfe();
+    mostrarAuditoriaInicio();
+  }
+  function carregarNotasPlanilha() {
+    if (!app.planilha || app.ajuda) { app.notasPlanilha = []; montarNfVer(); return; }
+    var id = app.planilha.id + '|' + app.planilha.aba;
+    chamar('apiNotas', { planilhaId: app.planilha.id, aba: app.planilha.aba }).then(function (r) {
+      if (!app.planilha || app.planilha.id + '|' + app.planilha.aba !== id) return;
+      app.notasPlanilha = r.notas || [];
+      montarNfVer();
+    }).catch(function () { /* a escolha mostra só as NFs desta entrada */ });
   }
 
   function htmlCampo(c, def) {
@@ -2032,10 +2095,19 @@
   document.addEventListener('visibilitychange', function () { if (!document.hidden) conferirTela(); });
 
   // ---------- painéis ----------
-  var NAV = { notas: 'btnNotas', historico: 'btnHistorico', config: 'btnConfig' };
+  var NAV = { notas: 'btnNotas', historico: 'btnHistorico', config: 'btnConfig', aprovar: 'btnAprovar' };
   function marcarNav(nome) {
-    ['btnInicio', 'btnNotas', 'btnHistorico', 'btnConfig'].forEach(function (id) { $(id).classList.toggle('ativo', id === (NAV[nome] || 'btnInicio')); });
+    ['btnInicio', 'btnNotas', 'btnHistorico', 'btnConfig', 'btnAprovar'].forEach(function (id) { $(id).classList.toggle('ativo', id === (NAV[nome] || 'btnInicio')); });
   }
+  /** A aba "Aprovar" (ao lado de Produtos) só existe quando há leituras esperando. */
+  function mostrarAbaAprovar(n) {
+    app.paraAprovar = n || 0;
+    $('btnAprovar').classList.toggle('oculto', !app.paraAprovar);
+    $('bolinhaAprovar').textContent = String(app.paraAprovar || '');
+    document.body.classList.toggle('com-aprovar', !!app.paraAprovar);
+    if (!app.paraAprovar && app.painel === 'aprovar') renderAprovar();
+  }
+
   function abrirPainel(nome, titulo, html, pequeno) {
     app.painel = nome;
     marcarNav(nome);
@@ -2182,18 +2254,13 @@
       linha('Memória Global', app.memoriaLigada, app.memoriaLigada ? 'O SCAN consulta e ensina a memória sozinho.' : 'O SCAN funciona normalmente sem ela.') +
       linha('Busca de EAN na internet', true, app.cosmosLigado ? 'Com o Cosmos (cadastro de EAN do Brasil).' : 'Sem o Cosmos.') +
       '<div class="situacao"><div class="t">QTD/CAIXA</div><div class="s">Calculada pela planilha: soma da QTDE de todas as linhas da mesma caixa, refeita a cada produto salvo ou corrigido.</div></div>' +
-      blocoConta() + blocoAprovar() + blocoAjuda() + blocoVelocidade() +
+      blocoConta() + blocoAjuda() + blocoVelocidade() +
       '<p class="dica">As chaves ficam no código do app e não aparecem aqui. SCAN versão ' + esc(app.versao) + '.</p>', true);
     if (rolagem) $('painelCorpo').scrollTop = rolagem;
     if (!app.meuCodigo && !app.erroCodigo && !app.ajuda) buscarCodigo();
   }
 
   // ---------- código pessoal, ajuda e aprovação ----------
-  function blocoAprovar() {
-    var n = app.paraAprovar || 0;
-    return n ? '<div class="situacao"><div class="t">Para aprovar<button class="btn principal curto" type="button" id="btnAbrirAprovar">Ver ' + n + '</button></div>' +
-      '<div class="s">' + (n === 1 ? 'Um produto mandado' : n + ' produtos mandados') + ' por quem usou o seu código. Só entram na planilha quando você aprovar.</div></div>' : '';
-  }
   /**
    * Conta Google em uso e troca de conta. O Google decide a conta pelo endereço, então trocar = abrir o
    * seletor de contas do Google, que volta para o SCAN com a conta escolhida (a página inteira, não só o quadro).
@@ -2236,7 +2303,7 @@
     if (buscandoCodigo || app.meuCodigo || app.ajuda) return;
     buscandoCodigo = true;
     chamar('apiMeuCodigo').then(function (r) {
-      app.meuCodigo = r.meuCodigo || ''; app.erroCodigo = r.erroCodigo || ''; app.erroCodigo = ''; app.paraAprovar = r.paraAprovar || app.paraAprovar;
+      app.meuCodigo = r.meuCodigo || ''; app.erroCodigo = r.erroCodigo || ''; app.erroCodigo = ''; mostrarAbaAprovar(r.paraAprovar || app.paraAprovar);
     }).catch(function (e) { app.erroCodigo = (e && e.message) || 'Não consegui criar o seu código agora.'; })
       .then(function () { buscandoCodigo = false; if (app.painel === 'config') abrirConfig(); });
   }
@@ -2317,30 +2384,60 @@
     app.cartoes.forEach(renderCartao);
   }
 
-  /** Lista do que chegou com o seu código: aprovar (com correção) ou recusar. */
+  /** Lista do que chegou com o seu código, separada por quem mandou: aprovar (com correção) ou recusar. */
   function abrirAprovar() {
     abrirPainel('aprovar', 'Para aprovar', '<div class="estado-lista" id="estadoAprovar"><span class="giro"></span> Buscando…</div><div id="listaAprovar"></div>');
-    chamar('apiParaAprovar').then(function (r) {
+    chamar('apiParaAprovar', nfDoDono()).then(function (r) {
       app.aprovar = r.itens;
-      app.paraAprovar = r.itens.length;
+      app.confiaveis = r.confiaveis || app.confiaveis || [];
+      mostrarAbaAprovar(r.itens.length);
       renderAprovar();
-    }).catch(function (e) { $('estadoAprovar').textContent = e.message; });
+      if (r.automaticos) aviso(r.automaticos === 1 ? 'Um produto de quem você confia entrou sozinho na planilha.' : r.automaticos + ' produtos de quem você confia entraram sozinhos na planilha.');
+    }).catch(function (e) { if ($('estadoAprovar')) $('estadoAprovar').textContent = e.message; });
   }
   var CAMPOS_APROVAR = [['DESCRICAO', 'Descrição'], ['SERIAL', 'Serial / IMEI'], ['EAN', 'EAN'], ['QTDE', 'Qtde'], ['CAIXA', 'Caixa'], ['NFE', 'NF']];
+  /** As NFs da sua entrada atual: o que chega de quem ajuda é ligado a elas primeiro. */
+  function nfDoDono() {
+    return app.planilha && !app.ajuda ? { planilhaId: app.planilha.id, nfe: $('nfe').value.trim() } : {};
+  }
+  function confiaEm(nome) {
+    var k = chaveNome(nome);
+    return (app.confiaveis || []).some(function (n) { return chaveNome(n) === k; });
+  }
+  function chaveNome(n) { return String(n || '').trim().toLowerCase(); }
+  /** Os itens agrupados por quem mandou, na ordem de chegada. */
+  function porPessoa(itens) {
+    var grupos = [];
+    itens.forEach(function (it, i) {
+      var k = chaveNome(it.nome);
+      var g = grupos.filter(function (x) { return x.chave === k; })[0];
+      if (!g) { g = { chave: k, nome: it.nome, itens: [] }; grupos.push(g); }
+      g.itens.push({ it: it, i: i });
+    });
+    return grupos;
+  }
   function renderAprovar() {
     if (app.painel !== 'aprovar') return;
     var itens = app.aprovar || [];
-    $('bolinhaConfig').className = 'bolinha' + (itens.length ? '' : ' oculto');
-    $('bolinhaConfig').textContent = itens.length ? String(itens.length) : '!';
-    $('estadoAprovar').innerHTML = itens.length ? itens.length + (itens.length === 1 ? ' produto esperando.' : ' produtos esperando.') + (itens.length > 1 ? ' <button class="btn principal curto" type="button" id="btnAprovarTodos">Aprovar todos</button>' : '') : 'Nada esperando aprovação.';
-    $('listaAprovar').innerHTML = itens.map(function (it, i) {
-      var fotos = (it.fotos || []).map(function (f, n) { return '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w240" alt="Foto ' + (n + 1) + '" loading="lazy"></a>'; }).join('');
-      return '<div class="registro aprovar" data-aprovar="' + i + '">' +
-        '<div class="t"><b>' + esc(it.nome) + '</b> · aba ' + esc(it.aba) + ' · ' + hora(it.quando) + '</div>' +
-        (fotos ? '<div class="tiras">' + fotos + '</div>' : '') +
-        CAMPOS_APROVAR.map(function (c) { return '<label class="rotulo">' + c[1] + '</label><input class="entrada" data-campo="' + c[0] + '" value="' + esc((it.campos || {})[c[0]] || '') + '">'; }).join('') +
-        '<div class="rodape dois"><button class="btn principal" type="button" data-aprovar-sim="' + i + '">Aprovar</button><button class="btn sec" type="button" data-aprovar-nao="' + i + '">Recusar</button></div></div>';
+    var grupos = porPessoa(itens);
+    $('estadoAprovar').textContent = itens.length ? (itens.length === 1 ? 'Um produto esperando.' : itens.length + ' produtos esperando' + (grupos.length > 1 ? ', de ' + grupos.length + ' pessoas.' : '.')) : 'Nada esperando aprovação.';
+    $('listaAprovar').innerHTML = grupos.map(function (g, gi) {
+      var confia = confiaEm(g.nome);
+      var cab = '<div class="situacao pessoa"><div class="t">' + esc(g.nome) + '<span class="sub">' + g.itens.length + (g.itens.length === 1 ? ' produto' : ' produtos') + '</span></div>' +
+        '<div class="rodape dois">' +
+        '<button class="btn principal" type="button" data-aprovar-pessoa="' + gi + '">Aprovar todos</button>' +
+        '<button class="btn sec" type="button" data-confiar="' + gi + '">' + (confia ? 'Parar de aprovar sozinho' : 'Aprovar sozinho daqui em diante') + '</button></div>' +
+        (confia ? '<div class="s">O que ' + esc(g.nome) + ' manda entra direto na planilha, sem passar por aqui.</div>' : '') + '</div>';
+      return cab + g.itens.map(function (x) { return cartaoAprovar(x.it, x.i); }).join('');
     }).join('');
+  }
+  function cartaoAprovar(it, i) {
+    var fotos = (it.fotos || []).map(function (f, n) { return '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w240" alt="Foto ' + (n + 1) + '" loading="lazy"></a>'; }).join('');
+    return '<div class="registro aprovar" data-aprovar="' + i + '">' +
+      '<div class="t">aba ' + esc(it.aba) + ' · ' + hora(it.quando) + '</div>' +
+      (fotos ? '<div class="tiras">' + fotos + '</div>' : '') +
+      CAMPOS_APROVAR.map(function (c) { return '<label class="rotulo">' + c[1] + '</label><input class="entrada" data-campo="' + c[0] + '" value="' + esc((it.campos || {})[c[0]] || '') + '">'; }).join('') +
+      '<div class="rodape dois"><button class="btn principal" type="button" data-aprovar-sim="' + i + '">Aprovar</button><button class="btn sec" type="button" data-aprovar-nao="' + i + '">Recusar</button></div></div>';
   }
   function camposDoAprovar(i) {
     var el = document.querySelector('[data-aprovar="' + i + '"]'), campos = {};
@@ -2351,17 +2448,60 @@
     var it = app.aprovar[i];
     if (!it) return Promise.resolve();
     if (botao) botao.disabled = true;
-    var pedido = aprovar ? chamar('apiAprovar', { id: it.id, campos: camposDoAprovar(i) }) : chamar('apiRecusar', { id: it.id });
+    var pedido = aprovar ? chamar('apiAprovar', Object.assign(nfDoDono(), { id: it.id, campos: camposDoAprovar(i) })) : chamar('apiRecusar', { id: it.id });
     return pedido.then(function (r) {
       app.aprovar = app.aprovar.filter(function (x) { return x !== it; });
-      app.paraAprovar = app.aprovar.length;
+      mostrarAbaAprovar(app.aprovar.length);
       renderAprovar();
       if (aprovar) aviso('Gravado na aba ' + r.planilha.aba + ', linha ' + r.linha + '.');
     }).catch(function (e) { if (botao) botao.disabled = false; aviso(e.message, true); if (e.codigo === 'JA_RESOLVIDO') abrirAprovar(); });
   }
-  function aprovarTodos(botao) {
-    botao.disabled = true;
-    (app.aprovar || []).slice().reduce(function (p) { return p.then(function () { return decidir(0, true); }); }, Promise.resolve());
+  /** Aprova, um a um, tudo o que uma pessoa mandou (com as correções que estiverem na tela). */
+  function aprovarPessoa(gi, botao) {
+    var g = porPessoa(app.aprovar || [])[gi];
+    if (!g) return;
+    if (botao) botao.disabled = true;
+    var ids = g.itens.map(function (x) { return x.it.id; });
+    ids.reduce(function (p, id) {
+      return p.then(function () {
+        var i = (app.aprovar || []).findIndex(function (x) { return x.id === id; });
+        return i < 0 ? null : decidir(i, true);
+      });
+    }, Promise.resolve());
+  }
+  /** Passa a aprovar sozinho (ou volta a conferir) o que esta pessoa mandar. */
+  function confiarEm(gi, botao) {
+    var g = porPessoa(app.aprovar || [])[gi];
+    if (!g) return;
+    if (botao) botao.disabled = true;
+    chamar('apiConfiar', Object.assign(nfDoDono(), { nome: g.nome, sim: !confiaEm(g.nome) })).then(function (r) {
+      app.confiaveis = r.confiaveis || [];
+      if (r.automaticos) { abrirAprovar(); aviso(r.automaticos === 1 ? 'Um produto entrou na planilha.' : r.automaticos + ' produtos entraram na planilha.'); return; }
+      renderAprovar();
+    }).catch(function (e) { if (botao) botao.disabled = false; aviso(e.message, true); });
+  }
+
+  /**
+   * Com a tela aberta, uma pergunta leve de tempos em tempos: o que chega de quem ajuda aparece
+   * quase na hora (e o que vem de quem você confia já entra na planilha sozinho).
+   */
+  var PENDENCIAS_MS = 12000, vendoPendencias = false;
+  function verPendencias() {
+    if (vendoPendencias || app.ajuda || document.visibilityState === 'hidden' || !app.versao) return;
+    if (SITE && !Login.valido()) return;
+    vendoPendencias = true;
+    chamar('apiPendencias', nfDoDono()).then(function (r) {
+      var antes = app.paraAprovar || 0;
+      mostrarAbaAprovar(r.paraAprovar);
+      if (r.automaticos) aviso(r.automaticos === 1 ? 'Um produto de quem você confia entrou na planilha.' : r.automaticos + ' produtos de quem você confia entraram na planilha.');
+      if (app.painel === 'aprovar' && r.paraAprovar !== (app.aprovar || []).length) abrirAprovar();
+      else if (r.paraAprovar > antes) { bip('conferir'); aviso(r.nomes.length === 1 ? r.nomes[0] + ' mandou um produto para aprovar.' : 'Chegaram produtos para aprovar.'); }
+    }).catch(function () { /* pergunta de novo depois */ }).then(function () { vendoPendencias = false; });
+  }
+  function ligarPendencias() {
+    setInterval(verPendencias, PENDENCIAS_MS);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') verPendencias(); });
+    window.addEventListener('focus', verPendencias);
   }
 
   // ---------- velocidade (tempo de cada etapa, guardado no aparelho) ----------
@@ -2509,18 +2649,23 @@
 
   var SITUACOES = { OK: ['ok', 'Bate'], CONFERIR: ['conferir', 'Conferir'], FALTA: ['divergente', 'Falta'], SOBRA: ['divergente', 'Sobra'], FORA: ['divergente', 'Fora da NF'] };
 
+  /** Os quatro números da auditoria, contando UNIDADES (produtos), não modelos. */
+  function kpisAuditoria(u) {
+    function kpi(n, txt, escuro) { return '<div class="kpi-cartao' + (escuro && n ? ' escuro' : '') + '"><b>' + n + '</b><span>' + txt + '</span></div>'; }
+    return '<div class="kpis">' + kpi(u.OK, 'batem') + kpi(u.CONFERIR, 'conferir', true) + kpi(u.FALTA, 'faltam', true) + kpi(u.SOBRA + u.FORA, 'sobra / fora', true) + '</div>';
+  }
+
   function renderAuditoria(a) {
     var bloco = blocoAuditoria(a.numero);
     if (!bloco) return;
-    var r = a.resumo;
+    var r = a.resumo, u = r.unidades || { OK: r.OK, CONFERIR: r.CONFERIR, FALTA: r.FALTA, SOBRA: r.SOBRA, FORA: r.FORA };
     var lidasNaNf = a.itens.reduce(function (s, x) { return s + Math.min(x.qtdLida, x.qtdNf); }, 0);
     var pct = r.qtdNf ? Math.min(100, Math.round(lidasNaNf / r.qtdNf * 100)) : 0;
-    function kpi(n, txt, escuro) { return '<div class="kpi-cartao' + (escuro && n ? ' escuro' : '') + '"><b>' + n + '</b><span>' + txt + '</span></div>'; }
     var ordem = { CONFERIR: 0, FALTA: 1, SOBRA: 2, OK: 3 };
     var itens = a.itens.slice().sort(function (x, y) { return ordem[x.situacao] - ordem[y.situacao] || x.item - y.item; });
     bloco.innerHTML =
       '<div class="secao">Auditoria da NF ' + esc(a.numero) + (a.emitente ? ' · ' + esc(a.emitente) : '') + '</div>' +
-      '<div class="kpis">' + kpi(r.OK, 'batem') + kpi(r.CONFERIR, 'conferir', true) + kpi(r.FALTA, 'faltam', true) + kpi(r.SOBRA + r.FORA, 'sobra / fora', true) + '</div>' +
+      kpisAuditoria(u) +
       '<div class="barra-progresso"><i style="width:' + pct + '%"></i></div>' +
       '<div class="estado-lista">' + lidasNaNf + ' de ' + r.qtdNf + ' unidades da NF lidas (' + pct + '%)</div>' +
       itens.map(function (x) {
@@ -2664,6 +2809,7 @@
       }
       nfLida = null;
       $('nfLeitura').innerHTML = '';
+      carregarNotasPlanilha();
       var l = numerosNf($('nfe').value);
       if (l.indexOf(r.nf.numero) < 0) l.push(r.nf.numero);
       definirNfs(l);
@@ -2889,7 +3035,7 @@
   }
 
   /** Itens das NFs desta entrada, baixados uma vez para o aparelho (null = ainda não chegaram). */
-  var nfAparelho = { chave: '', planilhaId: '', nfs: '', itens: null, progresso: null };
+  var nfAparelho = { chave: '', planilhaId: '', nfs: '', itens: null, progresso: null, notas: [] };
   var relogioNf = null, relogioProgresso = null;
   function chaveNf() { return app.planilha ? app.planilha.id + '|' + app.planilha.aba + '|' + numerosNf($('nfe').value).join(',') : ''; }
   function carregarNf() {
@@ -2897,8 +3043,11 @@
     relogioNf = setTimeout(function () {
       var k = chaveNf(), nfs = numerosNf($('nfe').value);
       if (k === nfAparelho.chave) return;
-      nfAparelho = { chave: k, planilhaId: app.planilha ? app.planilha.id : '', nfs: nfs.join(','), itens: null, progresso: null };
+      var outraPlanilha = !nfAparelho.chave || nfAparelho.planilhaId !== (app.planilha ? app.planilha.id : '');
+      nfAparelho = { chave: k, planilhaId: app.planilha ? app.planilha.id : '', nfs: nfs.join(','), itens: null, progresso: null, notas: [] };
       mostrarNfe();
+      mostrarAuditoriaInicio();
+      if (outraPlanilha) carregarNotasPlanilha();
       if (!app.planilha || !nfs.length || app.ajuda) return;
       chamar('apiItensNf', { planilhaId: app.planilha.id, nfe: nfs.join(', ') }).then(function (r) {
         if (nfAparelho.chave !== k) return;
@@ -2932,11 +3081,35 @@
           n.itens.forEach(function (it) { pr.itens.push({ numero: n.numero, ean: it.ean, lidos: it.lidos, total: it.total }); });
         });
         nfAparelho.progresso = pr;
+        nfAparelho.notas = r.notas || [];
         mostrarNfe();
+        mostrarAuditoriaInicio();
         app.cartoes.forEach(function (c) { if (c.estado === 'salvo' && noDestino(c)) renderCartao(c); });
       }).catch(function () { /* o progresso é só informação */ });
     }, atraso == null ? 1500 : atraso);
   }
+  /**
+   * Resumo da auditoria das NFs desta entrada, na tela inicial: batem, conferir, faltam e sobra/fora,
+   * contando unidades (produtos). Some quando não há NF na entrada.
+   */
+  function mostrarAuditoriaInicio() {
+    var alvo = $('audInicio');
+    if (!alvo) return;
+    var ver = nfVendo();
+    var notas = ((nfAparelho.chave === chaveNf() && nfAparelho.notas) || []).filter(function (n) { return !ver || n.numero === ver; });
+    if (!notas.length || app.ajuda) { alvo.className = 'aud-inicio oculto'; alvo.innerHTML = ''; return; }
+    var u = { OK: 0, CONFERIR: 0, FALTA: 0, SOBRA: 0, FORA: 0 };
+    notas.forEach(function (n) {
+      var x = (n.resumo && n.resumo.unidades) || {};
+      Object.keys(u).forEach(function (k) { u[k] += x[k] || 0; });
+    });
+    var titulo = notas.length === 1
+      ? 'Auditoria da NF ' + notas[0].numero + (notas[0].emitente ? ' · ' + notas[0].emitente : '')
+      : 'Auditoria de ' + notas.length + ' NFs';
+    alvo.className = 'aud-inicio';
+    alvo.innerHTML = '<div class="secao">' + esc(titulo) + '</div>' + kpisAuditoria(u);
+  }
+
   function progressoDoCartao(c) {
     var pr = nfAparelho.progresso;
     if (!pr || nfAparelho.chave !== chaveNf() || !c.valores.EAN) return '';
@@ -3098,12 +3271,14 @@
   function ligarEventos() {
     $('btnCamera').onclick = function () { $('arqCamera').click(); };
     ligarAcordar();
+    ligarPendencias();
     $('btnAdicionar').onclick = function () { $('arqGaleria').click(); };
     $('arqCamera').onchange = function (e) { adicionarArquivos(e.target.files); e.target.value = ''; };
     $('arqGaleria').onchange = function (e) { adicionarArquivos(e.target.files); e.target.value = ''; };
     $('btnLimpar').onclick = function () { app.fotos = []; renderMiniaturas(); };
     $('btnEnviar').onclick = enviar;
     $('btnPlanilha').onclick = abrirPlanilhas;
+    $('btnAprovar').onclick = abrirAprovar;
     $('btnHistorico').onclick = abrirHistorico;
     $('btnConfig').onclick = abrirConfig;
     $('btnFecharPainel').onclick = fecharPainel;
@@ -3118,6 +3293,7 @@
     $('caixa').oninput = function () { var c = $('caixa'), pos = c.selectionStart; if (c.value !== c.value.toUpperCase()) { c.value = c.value.toUpperCase(); try { c.setSelectionRange(pos, pos); } catch (e) {} } guardar('caixa', $('caixa').value.trim()); carregarTotal(); };
     $('nfe').oninput = function () { guardar('nfe', $('nfe').value.trim()); mostrarNfe(); carregarNf(); };
     $('btnNfeHero').onclick = abrirNotas;
+    $('nfVer').onchange = function () { escolherNfVer(this.value); };
     $('btnNotas').onclick = abrirNotas;
     $('btnInicio').onclick = function () { if (app.painel) fecharPainel(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     $('arqNfFoto').onchange = function (e) { lerNfFotos(e.target.files); e.target.value = ''; };
@@ -3218,7 +3394,8 @@
       if (t.hasAttribute('data-ajuda-aba')) { comecarAjuda(t.getAttribute('data-ajuda-aba')); return; }
       if (t.id === 'btnPararAjuda') { pararAjuda(); return; }
       if (t.id === 'btnAbrirAprovar') { abrirAprovar(); return; }
-      if (t.id === 'btnAprovarTodos') { aprovarTodos(t); return; }
+      if (t.hasAttribute('data-aprovar-pessoa')) { aprovarPessoa(Number(t.getAttribute('data-aprovar-pessoa')), t); return; }
+      if (t.hasAttribute('data-confiar')) { confiarEm(Number(t.getAttribute('data-confiar')), t); return; }
       if (t.hasAttribute('data-aprovar-sim')) { decidir(Number(t.getAttribute('data-aprovar-sim')), true, t); return; }
       if (t.hasAttribute('data-aprovar-nao')) { decidir(Number(t.getAttribute('data-aprovar-nao')), false, t); return; }
       if (t.hasAttribute('data-tema')) { usarTema(t.getAttribute('data-tema')); return; }
@@ -3310,10 +3487,9 @@
 
   /** Dados do início (versão, se é o dono, código da equipe...). Guardados no aparelho para a tela abrir já pronta. */
   function aplicarInicio(r) {
-    app.email = r.email || ''; if (SITE) Login.anotarConta(app.email); app.meuCodigo = r.meuCodigo || ''; app.paraAprovar = r.paraAprovar || 0;
+    app.email = r.email || ''; if (SITE) Login.anotarConta(app.email); app.meuCodigo = r.meuCodigo || ''; app.confiaveis = r.confiaveis || app.confiaveis || [];
     app.urlApp = r.urlApp || ''; app.versao = r.versao; $('versao').textContent = 'v' + r.versao; app.planilhas = r.planilhas || []; app.iaLigada = r.iaLigada; app.memoriaLigada = r.memoriaLigada; app.memoriaInstalada = r.memoriaInstalada; app.cosmosLigado = r.cosmosLigado; app.extrasDisponiveis = r.extrasDisponiveis || []; app.marcas = r.marcas || [];
-    $('bolinhaConfig').className = 'bolinha' + (app.paraAprovar ? '' : ' oculto');
-    $('bolinhaConfig').textContent = app.paraAprovar ? String(app.paraAprovar) : '!';
+    mostrarAbaAprovar(r.paraAprovar || 0);
     if (app.painel === 'config') abrirConfig();
   }
 
@@ -3323,7 +3499,7 @@
     chamar('apiIniciar').then(function (r) {
       aplicarInicio(r);
       guardar('inicio', { r: r });
-      if (r.paraAprovar) aviso(r.paraAprovar === 1 ? 'Um produto esperando sua aprovação (Situação).' : r.paraAprovar + ' produtos esperando sua aprovação (Situação).');
+      if (r.paraAprovar) aviso(r.paraAprovar === 1 ? 'Um produto esperando sua aprovação (aba Aprovar).' : r.paraAprovar + ' produtos esperando sua aprovação (aba Aprovar).');
       esvaziarEnsino();
       if (app.ajuda) {   // confere se o código ainda vale e se as abas mudaram
         chamar('apiDestinoAjuda', app.ajuda.codigo).then(function (d) {
