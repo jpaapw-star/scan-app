@@ -124,6 +124,8 @@
   .nf-menu button .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .nf-menu button .sub { color: var(--suave); font-weight: 400; }
   .nf-menu .titulo { padding: 10px 12px 4px; color: var(--suave); font-size: 12px; }
+  .folhas-nf { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .folhas-nf a.btn { width: auto; flex: 1 1 90px; }
   .nf-menu hr { border: 0; border-top: 1px solid var(--linha); margin: 6px 4px; }
   .pilula .seta { width: 14px; height: 14px; opacity: .6; }
   .nfe-campo { margin-top: 10px; }
@@ -1569,6 +1571,9 @@
     mostrarNfe();
     mostrarAuditoriaInicio();
   }
+  // A lista de NFs também guarda no servidor as notas abertas, para o aviso de "outra NF" sem atrasar a
+  // leitura. Renova a cada 20 min com a tela aberta.
+  setInterval(function () { if (!document.hidden) carregarNotasPlanilha(); }, 20 * 60000);
   function carregarNotasPlanilha() {
     if (!app.planilha || app.ajuda) { app.notasPlanilha = []; montarNfVer(); return; }
     var id = app.planilha.id + '|' + app.planilha.aba;
@@ -2599,7 +2604,7 @@
   function seg(ms) { return (ms / 1000).toFixed(1).replace('.', ',') + ' s'; }
   /** "rápida: ok em 1,2 s" · "rápida: ocupada (503) em 0,4 s" · "reserva: ok em 25,0 s" */
   function descreverTentativa(t) {
-    var nome = /lite/.test(t.modelo || '') ? 'IA rápida' : 'IA reserva';
+    var nome = t.reserva || (t.reserva == null && !/lite/.test(t.modelo || '')) ? 'IA reserva' : 'IA rápida';
     var como = t.cod === 200 ? 'ok' : t.cod === 429 ? 'no limite (429)' : t.cod >= 500 ? 'ocupada (' + t.cod + ')' : t.cod ? 'erro ' + t.cod : 'sem conexão';
     return nome + ': ' + como + ' em ' + seg(t.ms || 0);
   }
@@ -2627,6 +2632,7 @@
     xml: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M10 13l-2 2 2 2M14 13l2 2-2 2"/></svg>'
   };
   var nfLida = null, nfsLidas = [];
+  var nfFolhas = null;   // fotos ou PDF da última NF lida, guardados com ela para ver depois
 
   function abrirEtiquetas(filtro) {
     if (!app.planilha || !app.urlApp) { aviso('Escolha a planilha primeiro.', true); return; }
@@ -2764,6 +2770,35 @@
     }).catch(function (e) { if (botao) botao.disabled = false; aviso(e.message, true); });
   }
 
+  function verFolhasNf(numero, botao) {
+    var alvo = $('folhas-' + numero);
+    if (!alvo) return;
+    if (botao) botao.disabled = true;
+    alvo.innerHTML = '<div class="estado-lista">Buscando as folhas…</div>';
+    chamar('apiFolhasNf', { planilhaId: app.planilha.id, aba: app.planilha.aba, numero: numero }).then(function (r) {
+      if (botao) botao.disabled = false;
+      if (!r.folhas.length) { alvo.innerHTML = '<div class="estado-lista">Nenhuma foto guardada desta NF. As próximas fotos ou PDF que você ler dela ficam aqui.</div>'; return; }
+      alvo.innerHTML = '<div class="folhas-nf">' + r.folhas.map(function (f, i) {
+        return '<a class="btn sec" href="' + esc(f.url) + '" target="_blank" rel="noopener">' + (/\.pdf$/i.test(f.nome) ? 'PDF ' : 'Folha ') + (i + 1) + '</a>';
+      }).join('') + '</div>';
+    }).catch(function (e) { if (botao) botao.disabled = false; alvo.innerHTML = ''; aviso(e.message, true); });
+  }
+
+  function excluirNf(numero, botao) {
+    if (!window.confirm('Excluir a NF ' + numero + ' desta planilha? Os itens e a auditoria dela saem; os produtos já lidos continuam na planilha.')) return;
+    if (botao) botao.disabled = true;
+    chamar('apiExcluirNf', { planilhaId: app.planilha.id, aba: app.planilha.aba, numero: numero }).then(function () {
+      var l = numerosNf($('nfe').value);
+      if (l.indexOf(numero) >= 0) tirarNf(numero);
+      var bloco = $('aud-' + numero);
+      if (bloco) bloco.remove();
+      carregarNotasPlanilha();
+      if (app.painel === 'notas') carregarNotas();
+      mostrarAuditoriaInicio();
+      aviso('NF ' + numero + ' excluída.');
+    }).catch(function (e) { if (botao) botao.disabled = false; aviso(e.message, true); });
+  }
+
   function renderAuditoria(a) {
     var bloco = blocoAuditoria(a.numero);
     if (!bloco) return;
@@ -2792,8 +2827,11 @@
       }).join('') +
       '<div class="rodape dois"><button class="btn sec" type="button" data-auditar="' + esc(a.numero) + '">Atualizar</button>' +
       '<a class="btn sec" href="' + esc(a.url) + '" target="_blank" rel="noopener">Ver na planilha</a></div>' +
+      '<button class="btn sec" type="button" data-folhas-nf="' + esc(a.numero) + '">Ver fotos da NF</button>' +
+      '<div id="folhas-' + esc(a.numero) + '"></div>' +
       '<button class="btn sec" type="button" data-etiquetas-nf="' + esc(a.numero) + '">Imprimir QR das caixas desta NF</button>' +
-      (a.fechada ? '' : '<button class="btn principal" type="button" data-fechar-nf="' + esc(a.numero) + '">Fechar NF e gerar relatório</button>');
+      (a.fechada ? '' : '<button class="btn principal" type="button" data-fechar-nf="' + esc(a.numero) + '">Fechar NF e gerar relatório</button>') +
+      '<button class="btn sec" type="button" data-excluir-nf="' + esc(a.numero) + '">Excluir NF</button>';
   }
 
   function imagemParaNf(arquivo) {
@@ -2813,6 +2851,7 @@
       return p.then(function (acc) { return imagemParaNf(f).then(function (x) { acc.push(x); return acc; }); });
     }, Promise.resolve([])).then(function (fotos) {
       var chave = (fotos.filter(function (f) { return f.chave; })[0] || {}).chave || '';
+      nfFolhas = { imagens: fotos.map(function (f) { return f.base64; }) };
       return chamar('apiLerNfFotos', { imagens: fotos.map(function (f) { return f.base64; }), chave: chave });
     }).then(function (r) { mostrarLeitura(r.notas); })
       .catch(function (e) { if ($('nfLeitura')) $('nfLeitura').innerHTML = '<div class="estado-lista erro">' + esc(e.message || 'Não consegui abrir as fotos.') + '</div>'; });
@@ -2821,6 +2860,7 @@
   function lerNfXml(arquivo) {
     if (!arquivo) return;
     progressoNf('nfLeitura', 'Lendo o XML da nota…');
+    nfFolhas = null;
     var leitor = new FileReader();
     leitor.onload = function () {
       chamar('apiLerNfXml', { xml: String(leitor.result || '') }).then(function (r) { mostrarLeitura(r.notas); })
@@ -2833,7 +2873,7 @@
   function lerNfPdf(arquivo) {
     if (arquivo.size > 15 * 1024 * 1024) { $('nfLeitura').innerHTML = '<div class="estado-lista erro">Esse PDF é grande demais (máx. 15 MB).</div>'; return; }
     progressoNf('nfLeitura', 'Lendo o PDF da nota…');
-    lerBase64(arquivo).then(function (b64) { return chamar('apiLerNfFotos', { pdf: b64 }); })
+    lerBase64(arquivo).then(function (b64) { nfFolhas = { pdf: b64 }; return chamar('apiLerNfFotos', { pdf: b64 }); })
       .then(function (r) { mostrarLeitura(r.notas); })
       .catch(function (e) { if ($('nfLeitura')) $('nfLeitura').innerHTML = '<div class="estado-lista erro">' + esc(e.message || 'Não consegui abrir o PDF.') + '</div>'; });
   }
@@ -2841,6 +2881,7 @@
   function lerNfArquivo(arquivo) {
     if (arquivo.size > 10 * 1024 * 1024) { $('nfLeitura').innerHTML = '<div class="estado-lista erro">Essa planilha é grande demais (máx. 10 MB).</div>'; return; }
     progressoNf('nfLeitura', 'Lendo a planilha da NF…');
+    nfFolhas = null;
     lerBase64(arquivo).then(function (b64) { return chamar('apiLerNfArquivo', { nome: arquivo.name, base64: b64 }); })
       .then(function (r) { mostrarLeitura(r.notas); })
       .catch(function (e) { if ($('nfLeitura')) $('nfLeitura').innerHTML = '<div class="estado-lista erro">' + esc(e.message || 'Não consegui abrir a planilha.') + '</div>'; });
@@ -2902,7 +2943,7 @@
       '<div class="rodape dois"><button class="btn sec" type="button" id="btnNfDescartar">Descartar</button><button class="btn principal" type="button" id="btnNfSalvar">Guardar e auditar</button></div>';
   }
 
-  function salvarNf(substituir) {
+  function salvarNf(substituir, juntar) {
     if (!nfLida) return;
     nfLida.numero = $('nfNumero').value.trim();
     if (!numeroNf(nfLida.numero) && !nfLida.chave) { $('nfNumero').focus(); aviso('Informe o número da NF.', true); return; }
@@ -2914,13 +2955,19 @@
       itens: nfLida.itens.map(function (it) { return { item: it.item, codigo: it.codigo, descricao: it.descricao, ean: it.ean, quantidade: it.quantidade || it.qtd, seriais: it.seriais }; }) };
     var botao = $('btnNfSalvar');
     botao.disabled = true; botao.textContent = 'Guardando…';
-    chamar('apiSalvarNf', { planilhaId: app.planilha.id, aba: app.planilha.aba, nf: envio, substituir: !!substituir }).then(function (r) {
+    var pedido = { planilhaId: app.planilha.id, aba: app.planilha.aba, nf: envio, substituir: !!substituir, juntar: !!juntar };
+    if (nfFolhas && nfFolhas.imagens) pedido.imagens = nfFolhas.imagens;
+    if (nfFolhas && nfFolhas.pdf) pedido.pdf = nfFolhas.pdf;
+    chamar('apiSalvarNf', pedido).then(function (r) {
       if (r.jaExistia) {
         botao.disabled = false; botao.textContent = 'Guardar e auditar';
-        if (window.confirm('A NF ' + r.nf.numero + ' já está na planilha. Trocar pelos itens desta leitura?')) salvarNf(true);
+        // Outra folha da mesma nota é o caso comum: juntar vem primeiro; trocar só se a pessoa pedir.
+        if (window.confirm('A NF ' + r.nf.numero + ' já está guardada. Esta é outra folha da mesma nota?\n\nOK: juntar os itens desta folha aos que já estão.\nCancelar: ver outras opções.')) salvarNf(false, true);
+        else if (window.confirm('Trocar todos os itens da NF ' + r.nf.numero + ' pelos desta leitura?')) salvarNf(true);
         return;
       }
       nfLida = null;
+      nfFolhas = null;
       $('nfLeitura').innerHTML = '';
       carregarNotasPlanilha();
       var l = numerosNf($('nfe').value);
@@ -3533,6 +3580,8 @@
       if (t.hasAttribute('data-auditar')) { auditarNf(t.getAttribute('data-auditar')); return; }
       if (t.hasAttribute('data-fechar-nf')) { fecharNf(t.getAttribute('data-fechar-nf'), t); return; }
       if (t.hasAttribute('data-reabrir-nf')) { reabrirNf(t.getAttribute('data-reabrir-nf'), t); return; }
+      if (t.hasAttribute('data-folhas-nf')) { verFolhasNf(t.getAttribute('data-folhas-nf'), t); return; }
+      if (t.hasAttribute('data-excluir-nf')) { excluirNf(t.getAttribute('data-excluir-nf'), t); return; }
       if (t.hasAttribute('data-etiquetas-nf')) { abrirEtiquetas('&nf=' + encodeURIComponent(t.getAttribute('data-etiquetas-nf'))); return; }
       if (t.hasAttribute('data-usar')) usarPlanilha(t.getAttribute('data-usar'), t, t.getAttribute('data-usar-aba'));
       else if (t.hasAttribute('data-aba')) usarPlanilha(app.planilha.id, t, t.getAttribute('data-aba'));
