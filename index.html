@@ -520,7 +520,7 @@
    */
   var SITE = window.SCAN_SITE || null;
   var Login = (function () {
-    var cliente = null, token = lembrar('token', null), esperando = [], pedindo = false;
+    var cliente = null, token = lembrar('token', null), esperando = [], pedindo = false, consentir = false;
     function valido() { return token && token.valor && token.ate > Date.now() + 60000; }
     function iniciarCliente() {
       if (cliente) return cliente;
@@ -531,6 +531,13 @@
           pedindo = false;
           var fila = esperando; esperando = [];
           if (!r || r.error || !r.access_token) { fila.forEach(function (f) { f.falha(new ErroApp({ codigo: 'SEM_LOGIN', mensagem: 'Entrada no Google cancelada. Toque em Entrar para tentar de novo.' })); }); return; }
+          // O Google deixa desmarcar permissões na hora de entrar; sem Planilhas/Drive o SCAN não funciona.
+          if (google.accounts.oauth2.hasGrantedAllScopes && !google.accounts.oauth2.hasGrantedAllScopes.apply(null, [r].concat(SITE.escopos))) {
+            consentir = true;
+            esperando = fila;
+            mostrarTela(false, 'Para o SCAN funcionar, marque <b>todas</b> as permissões na tela do Google (Planilhas e Drive).');
+            return;
+          }
           token = { valor: r.access_token, ate: Date.now() + (Number(r.expires_in) || 3600) * 1000, conta: token && token.conta };
           guardar('token', token);
           esconderTela();
@@ -546,20 +553,22 @@
         if (pedindo) return;
         var c = iniciarCliente();
         if (!c) { esperando.pop(); falha(new ErroApp({ codigo: 'SEM_CONEXAO', mensagem: 'O login do Google ainda não carregou. Verifique a internet e recarregue.' })); return; }
-        var o = { prompt: escolher ? 'select_account' : '' };
+        var o = { prompt: consentir ? 'consent' : (escolher ? 'select_account' : '') };
+        consentir = false;
         if (!escolher && token && token.conta) o.hint = token.conta;
         pedindo = true;
         c.requestAccessToken(o);
       });
     }
     var tela = null;
-    function mostrarTela(escolher) {
+    function mostrarTela(escolher, texto) {
       if (!tela) {
         tela = document.createElement('div');
         tela.className = 'entrar';
-        tela.innerHTML = '<div class="caixa-entrar"><b>SCAN</b><p>Entre com a conta Google das suas planilhas.</p><button class="btn" type="button">Entrar com Google</button></div>';
+        tela.innerHTML = '<div class="caixa-entrar"><b>SCAN</b><p></p><button class="btn" type="button">Entrar com Google</button></div>';
         document.body.appendChild(tela);
       }
+      tela.querySelector('p').innerHTML = texto || 'Entre com a conta Google das suas planilhas.';
       tela.hidden = false;
       tela.querySelector('button').onclick = function () { pedir(escolher).catch(function (e) { aviso(e.message, true); }); };
     }
