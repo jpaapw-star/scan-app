@@ -107,9 +107,24 @@
   .pilula span { overflow: hidden; text-overflow: ellipsis; }
   .pilula svg { width: 16px; height: 16px; flex: none; opacity: .8; }
   .pilula.clara { background: var(--forte); color: var(--sobre-forte); font-weight: 600; }
-  /* A lista de NFs fica invisível por cima da pílula: tocar abre a escolha nativa do celular. */
+  /* Escolha da NF: menu do próprio app, abaixo da pílula. */
   .nf-ver-caixa { position: relative; display: inline-flex; max-width: 100%; }
-  .nf-ver { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; font-size: 16px; }
+  .nf-menu {
+    position: absolute; top: calc(100% + 8px); left: 0; z-index: 30; min-width: 220px; max-width: min(320px, calc(100vw - 32px));
+    max-height: 60vh; overflow-y: auto; padding: 6px; border-radius: var(--raio-p);
+    background: var(--cartao); border: 1px solid var(--linha-forte); box-shadow: 0 12px 32px rgba(0,0,0,.35);
+  }
+  .nf-menu button {
+    display: flex; align-items: center; gap: 10px; width: 100%; min-height: 42px; padding: 0 12px; border: 0; border-radius: 10px;
+    background: transparent; color: var(--texto); font: inherit; font-size: 14px; text-align: left; cursor: pointer;
+  }
+  .nf-menu button:hover, .nf-menu button:focus-visible { background: var(--campo); outline: none; }
+  .nf-menu button.escolhida { font-weight: 600; }
+  .nf-menu button .marca { width: 16px; flex: none; text-align: center; }
+  .nf-menu button .txt { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .nf-menu button .sub { color: var(--suave); font-weight: 400; }
+  .nf-menu .titulo { padding: 10px 12px 4px; color: var(--suave); font-size: 12px; }
+  .nf-menu hr { border: 0; border-top: 1px solid var(--linha); margin: 6px 4px; }
   .pilula .seta { width: 14px; height: 14px; opacity: .6; }
   .nfe-campo { margin-top: 10px; }
   .hero input.entrada { background: var(--campo-fundo); border-color: var(--linha-forte); }
@@ -120,6 +135,7 @@
     .caixa-cab { margin: 0; }
     .total-caixa, .hero-linha { margin-top: 0; }
     .hero-linha { justify-content: flex-end; }
+    .nf-menu { left: auto; right: 0; }
     .nfe-campo { grid-column: 2 / 4; }
   }
 
@@ -428,12 +444,12 @@
       </div>
       <div class="hero-linha">
         <span class="nf-ver-caixa">
-          <button class="pilula" id="btnNfeHero" type="button">
+          <button class="pilula" id="btnNfeHero" type="button" aria-haspopup="menu" aria-expanded="false">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
             <span id="nfeResumo">Sem nota fiscal</span>
             <svg class="seta" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
           </button>
-          <select id="nfVer" class="nf-ver" aria-label="Qual NF você está vendo"></select>
+          <div id="nfVer" class="nf-menu oculto" role="menu" aria-label="Qual NF você está vendo"></div>
         </span>
       </div>
       <div class="aud-inicio oculto" id="audInicio"></div>
@@ -1525,17 +1541,28 @@
     if (!sel) return;
     var l = numerosNf($('nfe').value), ver = nfVendo();
     var outras = (app.notasPlanilha || []).filter(function (n) { return l.indexOf(n.numero) < 0 && !n.fechada; }).slice(-30).reverse();
+    var item = function (v, txt, sub, marcada) {
+      return '<button type="button" role="menuitem" data-nf-ver="' + esc(v) + '"' + (marcada ? ' class="escolhida"' : '') + '>' +
+        '<span class="marca">' + (marcada ? '✓' : '') + '</span><span class="txt">' + esc(txt) + (sub ? ' <span class="sub">· ' + esc(sub) + '</span>' : '') + '</span></button>';
+    };
     var html = '';
-    if (l.length > 1) html += '<option value=""' + (!ver ? ' selected' : '') + '>Todas desta entrada (' + l.length + ')</option>';
-    html += l.map(function (n) { return '<option value="' + esc(n) + '"' + (n === ver ? ' selected' : '') + '>NF ' + esc(n) + '</option>'; }).join('');
-    if (!l.length) html += '<option value="" selected>Sem nota fiscal</option>';
-    if (outras.length) html += '<optgroup label="Outras notas desta planilha">' + outras.map(function (n) {
-      return '<option value="+' + esc(n.numero) + '">NF ' + esc(n.numero) + (n.emitente ? ' · ' + esc(n.emitente) : '') + '</option>';
-    }).join('') + '</optgroup>';
-    html += '<option value="*">Adicionar ou tirar notas…</option>';
+    if (l.length > 1) html += item('', 'Todas desta entrada (' + l.length + ')', '', !ver);
+    html += l.map(function (n) { return item(n, 'NF ' + n, '', n === ver); }).join('');
+    if (outras.length) html += '<hr><div class="titulo">Outras notas desta planilha</div>' + outras.map(function (n) {
+      return item('+' + n.numero, 'NF ' + n.numero, n.emitente || '', false);
+    }).join('');
+    html += (l.length || outras.length ? '<hr>' : '') + item('*', l.length ? 'Adicionar ou tirar notas…' : 'Adicionar nota fiscal…', '', false);
     sel.innerHTML = html;
   }
+  function abrirNfVer(abrir) {
+    var m = $('nfVer');
+    if (abrir == null) abrir = m.classList.contains('oculto');
+    if (abrir) montarNfVer();
+    m.classList.toggle('oculto', !abrir);
+    $('btnNfeHero').setAttribute('aria-expanded', abrir ? 'true' : 'false');
+  }
   function escolherNfVer(v) {
+    abrirNfVer(false);
     if (v === '*') { montarNfVer(); abrirNotas(); return; }
     if (v.charAt(0) === '+') { v = v.slice(1); adicionarNf(v); }
     guardar('nfVendo', v);
@@ -3379,8 +3406,10 @@
     $('nfe').value = lembrar('nfe', '');
     $('caixa').oninput = function () { var c = $('caixa'), pos = c.selectionStart; if (c.value !== c.value.toUpperCase()) { c.value = c.value.toUpperCase(); try { c.setSelectionRange(pos, pos); } catch (e) {} } guardar('caixa', $('caixa').value.trim()); carregarTotal(); };
     $('nfe').oninput = function () { guardar('nfe', $('nfe').value.trim()); mostrarNfe(); carregarNf(); };
-    $('btnNfeHero').onclick = abrirNotas;
-    $('nfVer').onchange = function () { escolherNfVer(this.value); };
+    $('btnNfeHero').onclick = function (e) { e.stopPropagation(); abrirNfVer(); };
+    $('nfVer').onclick = function (e) { var t = e.target.closest('[data-nf-ver]'); if (t) escolherNfVer(t.getAttribute('data-nf-ver')); };
+    document.addEventListener('click', function (e) { if (!e.target.closest('.nf-ver-caixa')) abrirNfVer(false); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') abrirNfVer(false); });
     $('audInicio').onclick = function (e) { var t = e.target.closest('[data-fechar-nf]'); if (t) fecharNf(t.getAttribute('data-fechar-nf'), t); };
     $('btnNotas').onclick = abrirNotas;
     $('btnInicio').onclick = function () { if (app.painel) fecharPainel(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
