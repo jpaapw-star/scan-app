@@ -278,6 +278,7 @@
   .avisos li.forte { font-weight: 700; }
   .rodape { display: grid; grid-template-columns: 1fr auto auto; gap: 8px; }
   .rodape.dois { grid-template-columns: 1fr 1fr; }
+  .rodape.tres { grid-template-columns: 1fr 1fr 1fr; }
   .perguntar { display: grid; gap: 10px; padding: 12px; border: 1px solid var(--linha-forte); border-radius: 14px; }
   .perguntar .nota b { color: var(--texto); }
   .juncao { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -1683,7 +1684,9 @@
       var prNf = progressoDoCartao(c);
       corpo = '<div class="nota">' + [c.valores.SERIAL && 'Serial ' + esc(c.valores.SERIAL), c.valores.EAN && 'EAN ' + esc(c.valores.EAN), Number(c.valores.QTDE) > 1 && 'Qtde ' + esc(c.valores.QTDE)].filter(Boolean).join(' · ') + '</div>' +
         (prNf ? '<div class="nota">' + esc(prNf) + '</div>' : '') + htmlJuncao(c) +
-        '<div class="rodape dois"><button class="btn sec curto" type="button" data-acao="corrigir">Corrigir</button><button class="btn sec curto" type="button" data-acao="fechar">Ocultar</button></div>';
+        (c.paraAprovar ? '<div class="rodape dois">' : '<div class="rodape tres">') + '<button class="btn sec curto" type="button" data-acao="corrigir">Corrigir</button>' +
+        (c.paraAprovar ? '' : '<button class="btn sec curto" type="button" data-acao="excluir">Excluir</button>') +
+        '<button class="btn sec curto" type="button" data-acao="fechar">Ocultar</button></div>';
     } else {
       var r = c.resultado;
       var avisos = (r.divergencias || []).map(function (d) { return '<li class="forte">' + esc(d) + '</li>'; }).concat((r.avisos || []).map(function (a) { return '<li>' + esc(a) + '</li>'; })).join('');
@@ -2003,6 +2006,27 @@
     aviso('Separei em 2 produtos.');
   }
 
+  /** Tira da planilha a linha de um produto já salvo (as fotos ficam no Drive). */
+  function excluirSalvo(c, botao) {
+    if (!window.confirm('Excluir este produto da planilha (linha ' + c.linha + ')? A linha inteira sai da planilha.')) return;
+    if (botao) botao.disabled = true;
+    chamar('apiExcluir', { planilhaId: c.planilhaId, aba: c.aba || (app.planilha && app.planilha.aba), id: c.id, linha: c.linha }).then(function (r) {
+      // As linhas de baixo sobem uma.
+      app.cartoes.forEach(function (x) { if (x !== c && x.estado === 'salvo' && x.planilhaId === c.planilhaId && x.aba === c.aba && Number(x.linha) > r.linha) { x.linha = Number(x.linha) - 1; renderCartao(x); } });
+      app.cartoes = app.cartoes.filter(function (x) { return x !== c; });
+      var el = document.querySelector('[data-cartao="' + c.id + '"]');
+      if (el) el.remove();
+      Banco.apagar(c.id);
+      if (noDestino(c) && r.caixa) { app.totais[chaveCaixa(r.caixa)] = r.totalCaixa; mostrarTotal(); }
+      renderResumo();
+      atualizarProgresso();
+      if (app.painel === 'historico') carregarHistorico();
+      aviso('Produto excluído da planilha.');
+    }).catch(function (e) {
+      if (botao) botao.disabled = false;
+      aviso(e.message, true);
+    });
+  }
   function descartar(c, semPerguntar) {
     if (!semPerguntar && !confirm('Descartar este produto? Ele não foi salvo na planilha.')) return;
     app.cartoes = app.cartoes.filter(function (x) { return x !== c; });
@@ -3603,6 +3627,7 @@
       else if (acao === 'separar') { c.separando = true; c.separar = {}; renderCartao(c); }
       else if (acao === 'separarNao') { c.separando = false; c.separar = {}; renderCartao(c); }
       else if (acao === 'separarOk') separarFotos(c);
+      else if (acao === 'excluir') excluirSalvo(c, alvo);
       else if (acao === 'fechar') { app.cartoes = app.cartoes.filter(function (x) { return x !== c; }); alvo.closest('.cartao').remove(); Banco.apagar(c.id); renderResumo(); }
     });
 
