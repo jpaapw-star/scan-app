@@ -599,7 +599,9 @@
         if (j && j.response) return j.response.result;
         var d = j && j.error && j.error.details && j.error.details[0];
         console.warn('SCAN — Apps Script API', resp.status, j && j.error);
-        throw new ErroApp({ codigo: 'SEM_CONEXAO', mensagem: (d && d.errorMessage ? 'O Google recusou: ' + d.errorMessage : 'Sem conexão com o Google agora. Nada foi perdido; tente de novo.') });
+        // Mostra o motivo que o Google deu (ex.: API desligada, script em outro projeto), para dar para resolver.
+        var motivo = (d && d.errorMessage) || (j && j.error && j.error.message) || '';
+        throw new ErroApp({ codigo: 'SEM_CONEXAO', mensagem: motivo ? 'O Google recusou (' + resp.status + '): ' + motivo : 'Sem conexão com o Google agora. Nada foi perdido; tente de novo.' });
       });
     });
   }
