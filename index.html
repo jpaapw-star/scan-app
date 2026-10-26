@@ -147,6 +147,10 @@
   .modo-ajuda.com-aprovar .nav { grid-template-columns: repeat(2, 1fr); }
   .aud-inicio { grid-column: 1 / -1; margin-top: 10px; }
   .aud-inicio .secao { margin: 0 0 8px; }
+  .outra-nf { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--forte); border-radius: 14px; }
+  .outra-nf .s { font-size: 13.5px; }
+  .nomes-aprovar { display: flex; flex-wrap: wrap; margin: 0 0 4px; }
+  .nomes-aprovar .opcao { flex: 0 1 auto; padding: 0 16px; }
   .situacao.pessoa .t .sub { color: var(--suave); font-weight: 400; font-size: 13px; margin-left: 8px; }
   /* Ajudando outra pessoa: só ler e mandar (sem notas e sem histórico da planilha dela). */
   .modo-ajuda #btnNotas, .modo-ajuda #btnHistorico, .modo-ajuda #btnNfeHero, .modo-ajuda #btnAprovar { display: none; }
@@ -489,7 +493,7 @@
   <div class="foto-grande oculto" id="fotoGrande"><img alt="Foto ampliada"></div>
 
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-<script>window.SCAN_SITE = {"clienteId":"644496247244-qo6itkor6osga4n8v4g8qhtprv9ae7ll.apps.googleusercontent.com","scriptIds":["AKfycbzfB8ZUZPe8UlNjMi7QLemO64Kj-YsHNShorcrgNzRjSRveGUHWiFm36q3cU4fLVWIkeg"],"url":"https://jpaapw-star.github.io/scan-app/","escopos":["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive","https://www.googleapis.com/auth/script.external_request","https://www.googleapis.com/auth/userinfo.email"]};</script>
+<script>window.SCAN_SITE = {"clienteId":"644496247244-qo6itkor6osga4n8v4g8qhtprv9ae7ll.apps.googleusercontent.com","scriptIds":["AKfycbzfB8ZUZPe8UlNjMi7QLemO64Kj-YsHNShorcrgNzRjSRveGUHWiFm36q3cU4fLVWIkeg"],"url":"https://jpaapw-star.github.io/scan-app/","escopos":["https://www.googleapis.com/auth/spreadsheets","https://www.googleapis.com/auth/drive","https://www.googleapis.com/auth/script.external_request","https://www.googleapis.com/auth/userinfo.email","https://www.googleapis.com/auth/script.scriptapp"]};</script>
 <script>
 (function () {
   'use strict';
@@ -1228,15 +1232,39 @@
       if (podeSalvarSozinho(c)) {
         c.automatico = true;
         salvar(c);
+      } else if (r.iaDeNovo && agendarIA(c)) {
+        // IA do Google ocupada: tenta de novo sozinha, sem bip (ainda não é a sua vez de conferir).
       } else {
         bip('conferir');
       }
+      if (!r.iaDeNovo) c.tentativasIA = 0;
     }).catch(function (e) {
       if (app.cartoes.indexOf(c) < 0 || (c.estado !== 'analisando' && c.estado !== 'lendo')) return;
       c.estado = 'falha';
       c.erro = (e && e.message) || 'Falhou.';
       atualizar(c);
     });
+  }
+
+  /**
+   * A IA do Google às vezes responde "ocupada" (503) ou "no limite". Em vez de pedir para você tocar em
+   * "IA", o SCAN tenta de novo sozinho: daqui a 15 s, 45 s e 2 min. O que você já corrigiu fica.
+   */
+  var ESPERAS_IA = [15000, 45000, 120000];
+  function agendarIA(c) {
+    var n = c.tentativasIA || 0, r = c.resultado;
+    if (n >= ESPERAS_IA.length || !r) return false;
+    var espera = ESPERAS_IA[n];
+    r.avisos = (r.avisos || []).filter(function (a) { return !/^(A IA não respondeu|Sem conexão com a IA|O limite gratuito da IA)/.test(a); });
+    r.avisos.unshift('A IA do Google está ocupada agora. O SCAN tenta de novo sozinho em ' + Math.round(espera / 1000) + ' s; não precisa tocar em nada.');
+    atualizar(c);
+    clearTimeout(c.relogioIA);
+    c.relogioIA = setTimeout(function () {
+      if (app.cartoes.indexOf(c) < 0 || c.estado !== 'revisar') return;   // já salvo, descartado ou corrigido
+      c.tentativasIA = n + 1;
+      processar(c, true);
+    }, espera);
+    return true;
   }
 
   /**
@@ -1483,11 +1511,8 @@
   }
   function mostrarNfe() {
     var v = $('nfe').value.trim(), l = numerosNf(v), ver = nfVendo();
-    var pr = nfAparelho.progresso && nfAparelho.chave === chaveNf() ? nfAparelho.progresso : null;
-    var dela = ver && pr ? (nfAparelho.notas || []).filter(function (n) { return n.numero === ver; })[0] : null;
-    var lidos = dela ? dela.lidos : pr && pr.lidos, total = dela ? dela.total : pr && pr.total;
-    $('nfeResumo').textContent = (!v ? 'Sem nota fiscal' : ver ? 'NF ' + ver : l.length + ' NFs: ' + l.join(', ')) +
-      (v && total ? ' · ' + lidos + ' de ' + total + ' lidos' : '');
+    // O quanto já foi lido aparece no resumo da auditoria logo abaixo: a pílula diz só qual NF.
+    $('nfeResumo').textContent = !v ? 'Sem nota fiscal' : ver ? 'NF ' + ver : l.length + ' NFs: ' + l.join(', ');
     $('btnNfeHero').className = 'pilula' + (v ? ' clara' : '');
     montarNfVer();
   }
@@ -1499,7 +1524,7 @@
     var sel = $('nfVer');
     if (!sel) return;
     var l = numerosNf($('nfe').value), ver = nfVendo();
-    var outras = (app.notasPlanilha || []).filter(function (n) { return l.indexOf(n.numero) < 0; }).slice(-30).reverse();
+    var outras = (app.notasPlanilha || []).filter(function (n) { return l.indexOf(n.numero) < 0 && !n.fechada; }).slice(-30).reverse();
     var html = '';
     if (l.length > 1) html += '<option value=""' + (!ver ? ' selected' : '') + '>Todas desta entrada (' + l.length + ')</option>';
     html += l.map(function (n) { return '<option value="' + esc(n) + '"' + (n === ver ? ' selected' : '') + '>NF ' + esc(n) + '</option>'; }).join('');
@@ -1604,6 +1629,7 @@
         '<div class="duplo">' + htmlCampo(c, porK.EAN) + htmlCampo(c, porK.QTDE) + '</div>' +
         faixaCaixa(c) +
         (avisos ? '<ul class="avisos">' + avisos + '</ul>' : '') +
+        htmlOutraNf(c) +
         (c.estado === 'falha' ? '<div class="nota divergente">' + esc(c.erro) + '</div>' : '') +
         '<div class="rodape"><button class="btn principal grande" type="button" data-acao="salvar"' + (falta.length || c.estado === 'salvando' ? ' disabled' : '') + '>' + (c.estado === 'salvando' ? 'Salvando…' : rotulo) + '</button>' +
         botaoIA + '<button class="btn sec" type="button" data-acao="descartar" aria-label="Descartar">Descartar</button></div>';
@@ -1618,6 +1644,23 @@
 
   // ---------- salvar sozinho e juntar dados que chegam depois ----------
   var JUNTAR_MS = 30 * 60000, JUNTAR_LOGO_MS = 3 * 60000;
+  /** O produto está em outra NF guardada (não nas desta entrada): oferece juntar a nota com um toque. */
+  function htmlOutraNf(c) {
+    var o = c.resultado && c.resultado.outraNf;
+    if (!o || numerosNf(c.nfe).indexOf(o.numero) >= 0) return '';
+    return '<div class="outra-nf"><div class="s">Este produto está na <b>NF ' + esc(o.numero) + '</b>' + (o.emitente ? ' · ' + esc(o.emitente) : '') +
+      ', que não está nesta entrada.</div><button class="btn principal curto" type="button" data-acao="juntarNf">Juntar a NF ' + esc(o.numero) + '</button></div>';
+  }
+  function juntarOutraNf(c) {
+    var o = c.resultado && c.resultado.outraNf;
+    if (!o) return;
+    adicionarNf(o.numero);
+    c.nfe = o.numero;   // este produto vai para a NF onde ele está
+    c.resultado.outraNf = null;
+    atualizar(c);
+    if (podeSalvarSozinho(c)) { c.automatico = true; salvar(c); }
+  }
+
   var TRES = ['DESCRICAO', 'EAN', 'SERIAL'];
   function temValor(c, k) { return !!String(c.valores[k] || '').trim(); }
   function faltamEm(c) { return TRES.filter(function (k) { return !temValor(c, k); }); }
@@ -1628,6 +1671,7 @@
   function podeSalvarSozinho(c) {
     var r = c.resultado;
     if (!r || (r.divergencias || []).length || Object.keys(c.editados).length || pendencias(c).length) return false;
+    if (r.outraNf && numerosNf(c.nfe).indexOf(r.outraNf.numero) < 0) return false;   // espera você dizer se junta a outra NF
     if (r.situacao === 'pronto') return true;
     var ok = TRES.every(function (k) { return !temValor(c, k) || (r.campos[k] || {}).estado === 'ok'; });
     return ok && faltamEm(c).length <= 1;
@@ -2420,16 +2464,28 @@
     if (app.painel !== 'aprovar') return;
     var itens = app.aprovar || [];
     var grupos = porPessoa(itens);
-    $('estadoAprovar').textContent = itens.length ? (itens.length === 1 ? 'Um produto esperando.' : itens.length + ' produtos esperando' + (grupos.length > 1 ? ', de ' + grupos.length + ' pessoas.' : '.')) : 'Nada esperando aprovação.';
-    $('listaAprovar').innerHTML = grupos.map(function (g, gi) {
-      var confia = confiaEm(g.nome);
-      var cab = '<div class="situacao pessoa"><div class="t">' + esc(g.nome) + '<span class="sub">' + g.itens.length + (g.itens.length === 1 ? ' produto' : ' produtos') + '</span></div>' +
-        '<div class="rodape dois">' +
-        '<button class="btn principal" type="button" data-aprovar-pessoa="' + gi + '">Aprovar todos</button>' +
+    // Os nomes de quem mandou ficam no topo; tocar num nome mostra só o que aquela pessoa mandou.
+    var vendo = grupos.filter(function (g) { return g.chave === app.aprovarVendo; })[0] || grupos[0];
+    app.aprovarVendo = vendo ? vendo.chave : '';
+    $('estadoAprovar').innerHTML = !itens.length ? 'Nada esperando aprovação.' :
+      '<div class="temas nomes-aprovar">' + grupos.map(function (g) {
+        return '<button type="button" class="opcao' + (g === vendo ? ' escolhida' : '') + '" data-ver-pessoa="' + esc(g.chave) + '">' + esc(g.nome) + ' · ' + g.itens.length + '</button>';
+      }).join('') + '</div>';
+    if (!vendo) { $('listaAprovar').innerHTML = ''; return; }
+    var gi = grupos.indexOf(vendo), confia = confiaEm(vendo.nome);
+    $('listaAprovar').innerHTML = '<div class="rodape dois">' +
+        '<button class="btn principal" type="button" data-aprovar-pessoa="' + gi + '">Aprovar ' + (vendo.itens.length === 1 ? 'este' : 'os ' + vendo.itens.length) + '</button>' +
         '<button class="btn sec" type="button" data-confiar="' + gi + '">' + (confia ? 'Parar de aprovar sozinho' : 'Aprovar sozinho daqui em diante') + '</button></div>' +
-        (confia ? '<div class="s">O que ' + esc(g.nome) + ' manda entra direto na planilha, sem passar por aqui.</div>' : '') + '</div>';
-      return cab + g.itens.map(function (x) { return cartaoAprovar(x.it, x.i); }).join('');
-    }).join('');
+      (confia ? '<p class="dica">O que ' + esc(vendo.nome) + ' manda entra direto na planilha, sem passar por aqui, mesmo com o SCAN fechado (o Google confere a cada 5 minutos).</p>' : '') +
+      vendo.itens.map(function (x) { return cartaoAprovar(x.it, x.i); }).join('');
+  }
+  function cartaoAprovar(it, i) {
+    var fotos = (it.fotos || []).map(function (f, n) { return '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w240" alt="Foto ' + (n + 1) + '" loading="lazy"></a>'; }).join('');
+    return '<div class="registro aprovar" data-aprovar="' + i + '">' +
+      '<div class="t">aba ' + esc(it.aba) + ' · ' + hora(it.quando) + '</div>' +
+      (fotos ? '<div class="tiras">' + fotos + '</div>' : '') +
+      CAMPOS_APROVAR.map(function (c) { return '<label class="rotulo">' + c[1] + '</label><input class="entrada" data-campo="' + c[0] + '" value="' + esc((it.campos || {})[c[0]] || '') + '">'; }).join('') +
+      '<div class="rodape dois"><button class="btn principal" type="button" data-aprovar-sim="' + i + '">Aprovar</button><button class="btn sec" type="button" data-aprovar-nao="' + i + '">Recusar</button></div></div>';
   }
   function cartaoAprovar(it, i) {
     var fotos = (it.fotos || []).map(function (f, n) { return '<a href="' + esc(f.url) + '" target="_blank" rel="noopener"><img src="https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w240" alt="Foto ' + (n + 1) + '" loading="lazy"></a>'; }).join('');
@@ -2613,7 +2669,7 @@
       if (app.painel !== 'notas') return;
       var atuais = numerosNf($('nfe').value);
       $('nfLista').innerHTML = r.notas.length ? r.notas.slice().reverse().map(function (n) {
-        return '<button type="button" class="registro" data-nf="' + esc(n.numero) + '"><span class="t">NF ' + esc(n.numero) + (atuais.indexOf(n.numero) >= 0 ? ' · nesta entrada' : '') + '</span>' +
+        return '<button type="button" class="registro" data-nf="' + esc(n.numero) + '"><span class="t">NF ' + esc(n.numero) + (atuais.indexOf(n.numero) >= 0 ? ' · nesta entrada' : '') + (n.fechada ? ' · fechada' : '') + '</span>' +
           '<span class="s">' + esc([n.emitente, n.emissao, n.itens + (n.itens === 1 ? ' item' : ' itens') + ' · ' + n.qtd + ' un.'].filter(Boolean).join(' · ')) + '</span></button>';
       }).join('') : '<div class="estado-lista">Nenhuma NF adicionada nesta planilha ainda.</div>';
     }).catch(function (e) { if ($('nfLista')) $('nfLista').innerHTML = '<div class="estado-lista erro">' + esc(e.message) + '</div>'; });
@@ -2655,6 +2711,32 @@
     return '<div class="kpis">' + kpi(u.OK, 'batem') + kpi(u.CONFERIR, 'conferir', true) + kpi(u.FALTA, 'faltam', true) + kpi(u.SOBRA + u.FORA, 'sobra / fora', true) + '</div>';
   }
 
+  /**
+   * Fecha a NF: o SCAN confere de novo, gera o relatório em PDF (faltas, sobras, o que veio diferente,
+   * com os links das fotos) e a NF deixa de receber produto. Sai da entrada atual.
+   */
+  function fecharNf(numero, botao) {
+    if (!window.confirm('Fechar a NF ' + numero + '? O SCAN gera o relatório e a nota para de receber produtos (dá para reabrir).')) return;
+    if (botao) { botao.disabled = true; botao.textContent = 'Gerando o relatório…'; }
+    chamar('apiFecharNf', { planilhaId: app.planilha.id, aba: app.planilha.aba, numero: numero }).then(function (r) {
+      var l = numerosNf($('nfe').value);
+      if (l.indexOf(numero) >= 0) definirNfs(l.filter(function (x) { return x !== numero; }));
+      carregarNotasPlanilha();
+      if (app.painel === 'notas') { auditarNf(numero); carregarNotas(); }
+      var u = r.resumo.unidades;
+      aviso('NF ' + numero + ' fechada' + (u.FALTA || u.CONFERIR || u.SOBRA || u.FORA ? ': ' + [u.FALTA && u.FALTA + ' faltando', u.CONFERIR && u.CONFERIR + ' para conferir', (u.SOBRA + u.FORA) && (u.SOBRA + u.FORA) + ' sobrando ou fora'].filter(Boolean).join(', ') + '.' : '. Tudo bateu.'));
+      window.open(r.relatorio, '_blank');
+    }).catch(function (e) { if (botao) { botao.disabled = false; botao.textContent = 'Fechar NF e gerar relatório'; } aviso(e.message, true); });
+  }
+  function reabrirNf(numero, botao) {
+    if (botao) botao.disabled = true;
+    chamar('apiReabrirNf', { planilhaId: app.planilha.id, aba: app.planilha.aba, numero: numero }).then(function () {
+      carregarNotasPlanilha();
+      if (app.painel === 'notas') { auditarNf(numero); carregarNotas(); }
+      aviso('NF ' + numero + ' reaberta: volta a receber produtos.');
+    }).catch(function (e) { if (botao) botao.disabled = false; aviso(e.message, true); });
+  }
+
   function renderAuditoria(a) {
     var bloco = blocoAuditoria(a.numero);
     if (!bloco) return;
@@ -2665,6 +2747,9 @@
     var itens = a.itens.slice().sort(function (x, y) { return ordem[x.situacao] - ordem[y.situacao] || x.item - y.item; });
     bloco.innerHTML =
       '<div class="secao">Auditoria da NF ' + esc(a.numero) + (a.emitente ? ' · ' + esc(a.emitente) : '') + '</div>' +
+      (a.fechada ? '<div class="situacao"><div class="t">NF fechada em ' + esc(a.fechada.quando) + '</div><div class="s">Não recebe mais produto.</div>' +
+        '<div class="rodape dois">' + (a.fechada.relatorio ? '<a class="btn principal" href="' + esc(a.fechada.relatorio) + '" target="_blank" rel="noopener">Ver relatório</a>' : '') +
+        '<button class="btn sec" type="button" data-reabrir-nf="' + esc(a.numero) + '">Reabrir</button></div></div>' : '') +
       kpisAuditoria(u) +
       '<div class="barra-progresso"><i style="width:' + pct + '%"></i></div>' +
       '<div class="estado-lista">' + lidasNaNf + ' de ' + r.qtdNf + ' unidades da NF lidas (' + pct + '%)</div>' +
@@ -2680,7 +2765,8 @@
       }).join('') +
       '<div class="rodape dois"><button class="btn sec" type="button" data-auditar="' + esc(a.numero) + '">Atualizar</button>' +
       '<a class="btn sec" href="' + esc(a.url) + '" target="_blank" rel="noopener">Ver na planilha</a></div>' +
-      '<button class="btn sec" type="button" data-etiquetas-nf="' + esc(a.numero) + '">Imprimir QR das caixas desta NF</button>';
+      '<button class="btn sec" type="button" data-etiquetas-nf="' + esc(a.numero) + '">Imprimir QR das caixas desta NF</button>' +
+      (a.fechada ? '' : '<button class="btn principal" type="button" data-fechar-nf="' + esc(a.numero) + '">Fechar NF e gerar relatório</button>');
   }
 
   function imagemParaNf(arquivo) {
@@ -3107,7 +3193,8 @@
       ? 'Auditoria da NF ' + notas[0].numero + (notas[0].emitente ? ' · ' + notas[0].emitente : '')
       : 'Auditoria de ' + notas.length + ' NFs';
     alvo.className = 'aud-inicio';
-    alvo.innerHTML = '<div class="secao">' + esc(titulo) + '</div>' + kpisAuditoria(u);
+    alvo.innerHTML = '<div class="secao">' + esc(titulo) + '</div>' + kpisAuditoria(u) +
+      (notas.length === 1 ? '<div class="rodape"><button class="btn sec curto" type="button" data-fechar-nf="' + esc(notas[0].numero) + '">Fechar NF e gerar relatório</button></div>' : '');
   }
 
   function progressoDoCartao(c) {
@@ -3294,6 +3381,7 @@
     $('nfe').oninput = function () { guardar('nfe', $('nfe').value.trim()); mostrarNfe(); carregarNf(); };
     $('btnNfeHero').onclick = abrirNotas;
     $('nfVer').onchange = function () { escolherNfVer(this.value); };
+    $('audInicio').onclick = function (e) { var t = e.target.closest('[data-fechar-nf]'); if (t) fecharNf(t.getAttribute('data-fechar-nf'), t); };
     $('btnNotas').onclick = abrirNotas;
     $('btnInicio').onclick = function () { if (app.painel) fecharPainel(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
     $('arqNfFoto').onchange = function (e) { lerNfFotos(e.target.files); e.target.value = ''; };
@@ -3371,6 +3459,7 @@
       else if (acao === 'descartar') descartar(c);
       else if (acao === 'tentar') { if (c.etapa === 'salvando') salvar(c); else processar(c); }
       else if (acao === 'ia') processar(c, true);
+      else if (acao === 'juntarNf') juntarOutraNf(c);
       else if (acao === 'corrigir') corrigirSalvo(c);
       else if (acao === 'juntar') juntarComAnterior(c);
       else if (acao === 'juntarSalvo') { var xj = app.cartoes.filter(function (k) { return k.id === c.juntarCom; })[0]; if (xj) juntarNoSalvo(c, xj, alvo); else { c.juntarCom = ''; atualizar(c); } }
@@ -3394,6 +3483,7 @@
       if (t.hasAttribute('data-ajuda-aba')) { comecarAjuda(t.getAttribute('data-ajuda-aba')); return; }
       if (t.id === 'btnPararAjuda') { pararAjuda(); return; }
       if (t.id === 'btnAbrirAprovar') { abrirAprovar(); return; }
+      if (t.hasAttribute('data-ver-pessoa')) { app.aprovarVendo = t.getAttribute('data-ver-pessoa'); renderAprovar(); $('painelCorpo').scrollTop = 0; return; }
       if (t.hasAttribute('data-aprovar-pessoa')) { aprovarPessoa(Number(t.getAttribute('data-aprovar-pessoa')), t); return; }
       if (t.hasAttribute('data-confiar')) { confiarEm(Number(t.getAttribute('data-confiar')), t); return; }
       if (t.hasAttribute('data-aprovar-sim')) { decidir(Number(t.getAttribute('data-aprovar-sim')), true, t); return; }
@@ -3412,6 +3502,8 @@
       if (t.hasAttribute('data-escolher-nf')) { mostrarLeitura([nfsLidas[Number(t.getAttribute('data-escolher-nf'))]]); return; }
       if (t.hasAttribute('data-nf')) { adicionarNf(t.getAttribute('data-nf')); return; }
       if (t.hasAttribute('data-auditar')) { auditarNf(t.getAttribute('data-auditar')); return; }
+      if (t.hasAttribute('data-fechar-nf')) { fecharNf(t.getAttribute('data-fechar-nf'), t); return; }
+      if (t.hasAttribute('data-reabrir-nf')) { reabrirNf(t.getAttribute('data-reabrir-nf'), t); return; }
       if (t.hasAttribute('data-etiquetas-nf')) { abrirEtiquetas('&nf=' + encodeURIComponent(t.getAttribute('data-etiquetas-nf'))); return; }
       if (t.hasAttribute('data-usar')) usarPlanilha(t.getAttribute('data-usar'), t, t.getAttribute('data-usar-aba'));
       else if (t.hasAttribute('data-aba')) usarPlanilha(app.planilha.id, t, t.getAttribute('data-aba'));
