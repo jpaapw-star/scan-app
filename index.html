@@ -395,7 +395,7 @@
   .toast.erro::before { content: "✕  "; }
   .foto-grande { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.94); display: grid; place-items: center; }
   .foto-grande img { max-width: 100%; max-height: 100%; }
-.foto-produto{margin:0 0 16px}.foto-produto img{display:block;width:100%;height:auto;border-radius:12px;background:var(--cartao, #111)}.foto-produto figcaption{padding:6px 2px;font-size:13px;opacity:.7}.foto-produto a{color:inherit}
+.foto-produto{margin:0 0 16px}.foto-produto img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;border-radius:12px;background:var(--cartao, #111)}.foto-produto figcaption{padding:6px 2px;font-size:13px;opacity:.7}.foto-produto a{color:inherit}
 </style>
 
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -2223,12 +2223,14 @@
         }).join('') + '</div>' +
         '<div class="filtros"><input class="entrada" id="novaAba" placeholder="Nova aba (ex.: Novembro)" autocomplete="off"><button class="btn sec" type="button" id="btnNovaAba">Criar e usar</button></div>';
       if ((app.extrasDisponiveis || []).length) {
-        html += '<div class="secao">Informações que esta aba recebe</div>' +
+        var off = extrasPausados();
+        html += '<div class="secao">O que ler nesta aba</div>' +
           '<div class="opcoes">' + app.extrasDisponiveis.map(function (e) {
             var tem = (atual.extras || []).indexOf(e.chave) >= 0;
-            return '<button type="button" class="opcao' + (tem ? ' escolhida' : '') + '"' + (tem ? ' aria-disabled="true"' : ' data-extra="' + esc(e.chave) + '"') + '>' + (tem ? '✓ ' : '+ ') + esc(tituloExtra(e.chave)) + '</button>';
+            var ligado = e.chave === 'CHECKLIST' ? tem && app.checklist : tem && off.indexOf(e.chave) < 0;
+            return '<button type="button" class="opcao' + (ligado ? ' escolhida' : '') + '" aria-pressed="' + (ligado ? 'true' : 'false') + '" data-extra="' + esc(e.chave) + '"' + (tem ? ' data-tem="1"' : '') + '>' + (ligado ? '✓ ' : '+ ') + esc(tituloExtra(e.chave)) + '</button>';
           }).join('') + '</div>' +
-          '<p class="dica" style="margin:0">Cada informação marcada vira uma coluna e sai da descrição. Para tirar, apague a coluna na planilha.</p>';
+          '<p class="dica" style="margin:0">Toque para ligar ou desligar. Fica guardado para esta planilha e aba. Ligar cria a coluna (se ainda não existir); desligar só para de ler, a coluna e o que já foi gravado continuam na planilha.</p>';
       }
     }
     html += '<div class="secao">' + (atual ? 'Trocar de planilha' : 'Conectar uma planilha') + '</div>' +
@@ -2247,8 +2249,12 @@
    * Checklist escrito à mão: só é lido com a pílula "Checklist" ligada (nem todo produto tem). Com ela desligada,
    * a coluna CHECKLIST fica como está e a leitura não espera a IA por causa dela.
    */
+  // Informações que você desligou nesta planilha e aba (a coluna continua na planilha, só não é lida).
+  function chaveExtrasPausados() { return app.planilha ? 'extrasOff:' + app.planilha.id + ':' + app.planilha.aba : 'extrasOff'; }
+  function extrasPausados() { var l = lembrar(chaveExtrasPausados(), []); return Array.isArray(l) ? l : []; }
   function extrasDaLeitura() {
-    var l = (app.planilha && app.planilha.extras || []).filter(function (k) { return k !== 'CHECKLIST'; });
+    var off = extrasPausados();
+    var l = (app.planilha && app.planilha.extras || []).filter(function (k) { return k !== 'CHECKLIST' && off.indexOf(k) < 0; });
     if (app.checklist && !app.ajuda) l.push('CHECKLIST');
     return l;
   }
@@ -2278,13 +2284,26 @@
     // A aba ainda não tem a coluna: cria no fim (nunca mexe nas outras).
     chamar('apiAdicionarExtra', { planilhaId: app.planilha.id, aba: app.planilha.aba, chave: 'CHECKLIST' }).then(function (r) {
       definirPlanilha(r.planilha);
+      if (app.painel === 'planilha') abrirPlanilhas();
       aviso('Checklist ligado: criei a coluna CHECKLIST na aba ' + r.planilha.aba + '. Tire as fotos do produto e do checklist juntas.');
     }).catch(function (e) { app.checklist = false; guardar(chaveChecklist(), false); mostrarChecklist(); aviso(e.message, true); });
   }
 
+  /** Liga ou desliga uma informação extra nesta planilha e aba (fica guardado no aparelho). */
   function adicionarExtra(botao) {
+    var k = botao.getAttribute('data-extra'), tem = botao.hasAttribute('data-tem');
+    if (k === 'CHECKLIST') { alternarChecklist(); abrirPlanilhas(); return; }
+    var off = extrasPausados();
+    if (tem) {
+      var pausado = off.indexOf(k) >= 0;
+      guardar(chaveExtrasPausados(), pausado ? off.filter(function (x) { return x !== k; }) : off.concat([k]));
+      abrirPlanilhas();
+      aviso(tituloExtra(k) + (pausado ? ' ligado: as próximas leituras preenchem esta coluna.' : ' desligado: a coluna continua na planilha, só não é mais lida.'));
+      return;
+    }
     botao.disabled = true;
-    chamar('apiAdicionarExtra', { planilhaId: app.planilha.id, aba: app.planilha.aba, chave: botao.getAttribute('data-extra') }).then(function (r) {
+    chamar('apiAdicionarExtra', { planilhaId: app.planilha.id, aba: app.planilha.aba, chave: k }).then(function (r) {
+      guardar(chaveExtrasPausados(), off.filter(function (x) { return x !== k; }));
       definirPlanilha(r.planilha);
       abrirPlanilhas();
       aviso('Coluna criada na aba ' + r.planilha.aba + '.' + (r.preenchidas ? ' Preenchi ' + r.preenchidas + (r.preenchidas === 1 ? ' produto já lido' : ' produtos já lidos') + ' pela descrição.' : ' Vale para os próximos produtos.'));
@@ -3753,8 +3772,18 @@
       return '<figure class="foto-produto" id="fotoVer' + i + '"><div class="progresso"><span class="giro"></span>Carregando a foto ' + (i + 1) + '…</div>' +
         '<figcaption>Foto ' + (i + 1) + ' · <a href="https://drive.google.com/file/d/' + id + '/view" target="_blank" rel="noopener">abrir no Drive</a></figcaption></figure>';
     }).join(''));
+    // No site, a foto vem direto do Drive com a sua conta (mais rápido); senão, pelo SCAN.
+    function doDrive(id) {
+      if (!SITE) return Promise.reject(new Error('sem site'));
+      return Login.obter().then(function (valor) {
+        return fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?alt=media&supportsAllDrives=true', { headers: { Authorization: 'Bearer ' + valor } });
+      }).then(function (resp) {
+        if (!resp.ok) throw new Error('Drive ' + resp.status);
+        return resp.blob();
+      }).then(function (b) { return { src: URL.createObjectURL(b) }; });
+    }
     ids.forEach(function (id, i) {
-      chamar('apiVerFoto', { id: id }).then(function (r) {
+      doDrive(id).catch(function () { return chamar('apiVerFoto', { id: id }); }).then(function (r) {
         var f = $('fotoVer' + i);
         if (f) f.querySelector('.progresso').outerHTML = '<img src="' + r.src + '" alt="Foto ' + (i + 1) + '">';
       }).catch(function (e) {
