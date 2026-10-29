@@ -1065,91 +1065,15 @@
     if (!a.length || !b.length) return null;
     return Math.abs(Math.min.apply(null, b) - Math.max.apply(null, a));
   }
-  function pausaLonga(ga, gb) { var t = intervalo(ga, gb); return t != null && t > PAUSA_MS; }
   /** As cores dizem com clareza que são caixas diferentes? */
   function coresDiferentes(ga, gb) { var p = parecencaGrupos(ga, gb); return p != null && p < COR_DIFERENTE; }
 
   /**
-   * Separa as fotos enviadas juntas em produtos, pelos códigos lidos de cada uma.
-   * Duas fotos são do mesmo produto quando têm um código em comum e não têm, cada uma,
-   * um serial/IMEI que a outra não tem (mesmo modelo, aparelhos diferentes = 2 produtos).
-   * Foto sem código nenhum vai junto com a próxima foto que tem código (ou com a anterior, se for a última).
+   * As fotos enviadas juntas são sempre um produto só (pedido do João: o lote costuma pedir mais de uma
+   * foto). Separar, quando precisar, é pelo botão "Separar fotos" do cartão.
    */
   function agruparFotos(fotos) {
-    function info(f) {
-      var todos = {}, unidade = {};
-      (f.codigos || []).forEach(function (k) {
-        var v = String(k.valor || '').toUpperCase();
-        if (!v) return;
-        todos[v] = 1;
-        if (!ehEan(k.valor, k.formato) && pareceSerial(k.valor)) unidade[v] = 1;
-      });
-      return { todos: todos, unidade: unidade, vazio: !Object.keys(todos).length };
-    }
-    function sobra(a, b) { return Object.keys(a.unidade).some(function (v) { return !b.todos[v]; }); }
-    function mesmo(a, b) {
-      var comum = Object.keys(a.todos).some(function (v) { return b.todos[v]; });
-      return comum && !(sobra(a, b) && sobra(b, a));
-    }
-    function juntar(g, i) {
-      Object.keys(i.todos).forEach(function (v) { g.info.todos[v] = 1; });
-      Object.keys(i.unidade).forEach(function (v) { g.info.unidade[v] = 1; });
-    }
-    var grupos = [], soltas = [], ultimo = null;
-    fotos.forEach(function (f) {
-      var i = info(f);
-      if (i.vazio) { soltas.push(f); return; }
-      var g = grupos.filter(function (x) { return mesmo(x.info, i); })[0];
-      if (!g) { g = { fotos: [], info: { todos: {}, unidade: {} } }; grupos.push(g); }
-      // Fotos sem código vão junto com esta, a não ser que pareçam mais com a caixa da foto anterior.
-      var comAnterior = ultimo && ultimo !== g ? soltas.filter(function (s) {
-        var pa = parecencaGrupos([s], ultimo.fotos), pb = parecenca(s, f);
-        return pa != null && pb != null && pa > pb + 0.25;
-      }) : [];
-      if (comAnterior.length) ultimo.fotos = ultimo.fotos.concat(comAnterior);
-      g.fotos = g.fotos.concat(soltas.filter(function (s) { return comAnterior.indexOf(s) < 0; }), [f]);
-      soltas = [];
-      juntar(g, i);
-      ultimo = g;
-    });
-    if (soltas.length) {
-      if (ultimo) ultimo.fotos = ultimo.fotos.concat(soltas);
-      else grupos.push({ fotos: soltas });
-    }
-    // Uma foto só com o EAN (frente da caixa) e outra só com o serial/IMEI (etiqueta do lado) não têm
-    // código em comum, mas são o mesmo produto: junta cada uma com a vizinha que completa (na ordem das fotos).
-    function tipo(g) {
-      if (!g.info) return '';
-      var ean = Object.keys(g.info.todos).some(function (v) { return ehEan(v); }), unidade = Object.keys(g.info.unidade).length > 0;
-      return ean && !unidade ? 'ean' : unidade && !ean ? 'unidade' : '';
-    }
-    var ordem = fotos.map(function (f) { return f; });
-    var pos = function (f) { return ordem.indexOf(f); };
-    var temUnidade = grupos.some(function (g) { return tipo(g) === 'unidade'; });
-    // Mesmo modelo, aparelhos diferentes: as fotos só com o EAN se juntaram pelo EAN. Havendo fotos só
-    // de serial, separa uma por uma para cada uma achar o seu serial (as que sobrarem voltam a se juntar).
-    var pedacos = [];
-    grupos.forEach(function (g, gi) {
-      if (temUnidade && tipo(g) === 'ean' && g.fotos.length > 1) {
-        g.fotos.forEach(function (f) { pedacos.push({ fotos: [f], info: g.info, origem: gi }); });
-      } else {
-        pedacos.push({ fotos: g.fotos, info: g.info, origem: gi });
-      }
-    });
-    pedacos.sort(function (a, b) { return pos(a.fotos[0]) - pos(b.fotos[0]); });
-    var juntos = [];
-    for (var i = 0; i < pedacos.length; i++) {
-      var a = pedacos[i], b = pedacos[i + 1], ta = tipo(a), tb = b ? tipo(b) : '';
-      if (ta && tb && ta !== tb && !coresDiferentes(a.fotos, b.fotos) && !pausaLonga(a.fotos, b.fotos)) {   // cores bem diferentes ou pausa longa: produtos diferentes
-        juntos.push({ fotos: a.fotos.concat(b.fotos).sort(function (x, y) { return pos(x) - pos(y); }), feito: true });
-        i++;
-      } else {
-        var irmao = juntos.filter(function (j) { return !j.feito && j.origem === a.origem; })[0];
-        if (irmao) irmao.fotos = irmao.fotos.concat(a.fotos);
-        else juntos.push({ fotos: a.fotos.slice(), origem: a.origem });
-      }
-    }
-    return juntos.map(function (g) { return g.fotos; });
+    return fotos.length ? [fotos] : [];
   }
 
   function enviar() {
@@ -1182,7 +1106,6 @@
         Banco.salvar(cartao);
         processar(cartao);
       });
-      if (grupos.length > 1) aviso('Separei as ' + fotos.length + ' fotos em ' + grupos.length + ' produtos pelos códigos das etiquetas.');
     });
   }
 
@@ -1342,7 +1265,9 @@
     var comFotos = function () {
       pedido.semFotos = false;
       // Para a IA vai só a parte da etiqueta (menos dados, resposta mais rápida); no Drive fica a foto inteira.
-      return Promise.all(fotos.map(recortarEtiqueta)).then(function (imgs) {
+      // Com a coluna LOTE a foto vai inteira: a etiqueta do lote pode estar longe do código de barras.
+      var inteira = (o.extras || []).indexOf('LOTE') >= 0;
+      return Promise.all(fotos.map(function (f) { return inteira ? Promise.resolve(f.full || '') : recortarEtiqueta(f); })).then(function (imgs) {
         pedido.imagens = imgs;
         return correrIA(pedido).then(fim);
       });
