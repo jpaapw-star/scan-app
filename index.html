@@ -1408,7 +1408,7 @@
     function trabalhador() {
       var f = faltam[i++];
       if (!f) return Promise.resolve();
-      return chamar('apiEnviarFoto', { planilhaId: c.planilhaId, registroId: c.id, caixa: c.caixa, indice: f.n, base64: f.full }).then(function (r) {
+      return chamar('apiEnviarFoto', { planilhaId: c.planilhaId, registroId: c.id, caixa: c.caixa, indice: f.n, base64: f.full, miniatura: f.thumb }).then(function (r) {
         f.driveId = r.id; f.url = r.url; delete f.full; Banco.salvar(c);
       }).then(trabalhador);
     }
@@ -2045,7 +2045,8 @@
     completando[c.id] = true;
     enviarFotos(c).then(function () {
       return chamar('apiFotos', { planilhaId: c.planilhaId, aba: c.aba, registroId: c.id, fotos: c.fotos.map(function (f) { return f.url; }).filter(Boolean) });
-    }).then(function () {
+    }).then(function (r) {
+      if (r && r.erroMiniatura && !avisouMiniatura) { avisouMiniatura = true; aviso('A miniatura da foto não entrou na planilha: ' + r.erroMiniatura, true); }
       c.fotosPendentes = false;
       atualizar(c);
     }).catch(function () { /* tenta de novo na próxima vez que o SCAN abrir */ }).then(function () { delete completando[c.id]; });
@@ -2250,8 +2251,23 @@
    * a coluna CHECKLIST fica como está e a leitura não espera a IA por causa dela.
    */
   // Informações que você desligou nesta planilha e aba (a coluna continua na planilha, só não é lida).
+  // A escolha fica guardada no SCAN para a planilha e aba (vale em qualquer aparelho e para todos);
+  // o aparelho guarda uma cópia para a tela abrir já certa.
   function chaveExtrasPausados() { return app.planilha ? 'extrasOff:' + app.planilha.id + ':' + app.planilha.aba : 'extrasOff'; }
   function extrasPausados() { var l = lembrar(chaveExtrasPausados(), []); return Array.isArray(l) ? l : []; }
+  function guardarLeituraNaPlanilha() {
+    if (!app.planilha || app.ajuda) return;
+    var leitura = { checklist: !!app.checklist, pausados: extrasPausados() };
+    app.planilha.leitura = leitura;
+    guardar('planilha', app.planilha);
+    chamar('apiGuardarLeitura', { planilhaId: app.planilha.id, aba: app.planilha.aba, checklist: leitura.checklist, pausados: leitura.pausados })
+      .catch(function () { /* fica no aparelho; tenta de novo na próxima troca */ });
+  }
+  function aplicarLeituraDaPlanilha(p) {
+    if (!p || !p.leitura) return;
+    guardar('checklist:' + p.id + ':' + p.aba, !!p.leitura.checklist);
+    guardar('extrasOff:' + p.id + ':' + p.aba, Array.isArray(p.leitura.pausados) ? p.leitura.pausados : []);
+  }
   function extrasDaLeitura() {
     var off = extrasPausados();
     var l = (app.planilha && app.planilha.extras || []).filter(function (k) { return k !== 'CHECKLIST' && off.indexOf(k) < 0; });
@@ -2278,6 +2294,7 @@
     if (!app.planilha || app.ajuda) return;
     app.checklist = !app.checklist;
     guardar(chaveChecklist(), app.checklist);
+    guardarLeituraNaPlanilha();
     mostrarChecklist();
     if (!app.checklist) { aviso('Checklist desligado: as próximas fotos são só do produto.'); return; }
     if ((app.planilha.extras || []).indexOf('CHECKLIST') >= 0) { aviso('Checklist ligado: tire as fotos do produto e do checklist juntas.'); return; }
@@ -2286,7 +2303,7 @@
       definirPlanilha(r.planilha);
       if (app.painel === 'planilha') abrirPlanilhas();
       aviso('Checklist ligado: criei a coluna CHECKLIST na aba ' + r.planilha.aba + '. Tire as fotos do produto e do checklist juntas.');
-    }).catch(function (e) { app.checklist = false; guardar(chaveChecklist(), false); mostrarChecklist(); aviso(e.message, true); });
+    }).catch(function (e) { app.checklist = false; guardar(chaveChecklist(), false); guardarLeituraNaPlanilha(); mostrarChecklist(); aviso(e.message, true); });
   }
 
   /** Liga ou desliga uma informação extra nesta planilha e aba (fica guardado no aparelho). */
@@ -2297,6 +2314,7 @@
     if (tem) {
       var pausado = off.indexOf(k) >= 0;
       guardar(chaveExtrasPausados(), pausado ? off.filter(function (x) { return x !== k; }) : off.concat([k]));
+      guardarLeituraNaPlanilha();
       abrirPlanilhas();
       aviso(tituloExtra(k) + (pausado ? ' ligado: as próximas leituras preenchem esta coluna.' : ' desligado: a coluna continua na planilha, só não é mais lida.'));
       return;
@@ -2305,6 +2323,7 @@
     chamar('apiAdicionarExtra', { planilhaId: app.planilha.id, aba: app.planilha.aba, chave: k }).then(function (r) {
       guardar(chaveExtrasPausados(), off.filter(function (x) { return x !== k; }));
       definirPlanilha(r.planilha);
+      guardarLeituraNaPlanilha();
       abrirPlanilhas();
       aviso('Coluna criada na aba ' + r.planilha.aba + '.' + (r.preenchidas ? ' Preenchi ' + r.preenchidas + (r.preenchidas === 1 ? ' produto já lido' : ' produtos já lidos') + ' pela descrição.' : ' Vale para os próximos produtos.'));
     }).catch(function (e) { botao.disabled = false; aviso(e.message, true); });
@@ -2337,6 +2356,7 @@
       definirPlanilha(r.planilha);
       app.planilhas = [r.planilha].concat(app.planilhas.filter(function (p) { return p.id !== r.planilha.id; }));
       fecharPainel();
+      fazerMiniaturas(r.planilha, r.semMiniatura);
       aviso('Gravando em "' + r.planilha.nome + '", aba ' + r.planilha.aba + ' (' + r.total + ' registro(s)).' + (r.planilha.criadas.length ? ' Criei: ' + r.planilha.criadas.join(', ') + '.' : ''));
     }).catch(function (e) {
       if (botao) { botao.disabled = false; botao.innerHTML = texto; }
@@ -2345,6 +2365,7 @@
   }
 
   function definirPlanilha(p) {
+    aplicarLeituraDaPlanilha(p);
     app.planilha = p;
     guardar('planilha', p);
     lerChecklistDaPlanilha();
@@ -3793,9 +3814,56 @@
     });
   }
 
+  /**
+   * Linhas antigas sem miniatura na célula FOTO: o celular baixa a foto do Drive (com a sua conta),
+   * faz uma pequena e manda para a planilha, 6 de cada vez. Roda depois de abrir a planilha, sem atrapalhar a leitura.
+   */
+  var miniaturasRodando = false, avisouMiniatura = false;
+  function fazerMiniaturas(planilha, ids) {
+    if (!SITE || !planilha || !ids || !ids.length || miniaturasRodando) return;
+    miniaturasRodando = true;
+    var fila = ids.slice(0, 30), feitas = 0, erro = '';
+    function pequena(id) {
+      return Login.obter().then(function (valor) {
+        return fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?alt=media&supportsAllDrives=true', { headers: { Authorization: 'Bearer ' + valor } });
+      }).then(function (resp) {
+        if (!resp.ok) throw new Error('Drive ' + resp.status);
+        return resp.blob();
+      }).then(function (b) {
+        return new Promise(function (ok, falha) {
+          var img = new Image(), url = URL.createObjectURL(b);
+          img.onload = function () { URL.revokeObjectURL(url); ok({ id: id, src: desenhar(img, 240).toDataURL('image/jpeg', 0.7) }); };
+          img.onerror = function () { URL.revokeObjectURL(url); falha(new Error('foto ilegível')); };
+          img.src = url;
+        });
+      }).catch(function () { return null; });
+    }
+    function lote() {
+      var parte = fila.splice(0, 6);
+      if (!parte.length) return Promise.resolve();
+      return Promise.all(parte.map(pequena)).then(function (itens) {
+        itens = itens.filter(Boolean);
+        if (!itens.length) return lote();
+        return chamar('apiMiniaturas', { planilhaId: planilha.id, aba: planilha.aba, itens: itens }).then(function (r) {
+          feitas += r.feitas || 0;
+          if (r.erro) erro = r.erro;
+          if (!r.feitas && r.erro) return; // o Google recusou: não adianta mandar o resto agora
+          return lote();
+        });
+      });
+    }
+    lote().catch(function (e) { erro = e.message; }).then(function () {
+      miniaturasRodando = false;
+      if (feitas) aviso(feitas === 1 ? '1 linha ganhou a miniatura da foto.' : feitas + ' linhas ganharam a miniatura da foto.');
+      else if (erro) aviso('As miniaturas não entraram na planilha: ' + erro, true);
+    });
+  }
+
   /** Dados do início (versão, se é o dono, código da equipe...). Guardados no aparelho para a tela abrir já pronta. */
   function aplicarInicio(r) {
     app.email = r.email || ''; if (SITE) Login.anotarConta(app.email); app.meuCodigo = r.meuCodigo || ''; app.confiaveis = r.confiaveis || app.confiaveis || [];
+    var daPlanilha = app.planilha && (r.planilhas || []).filter(function (pl) { return pl.id === app.planilha.id && pl.aba === app.planilha.aba && pl.leitura; })[0];
+    if (daPlanilha) { aplicarLeituraDaPlanilha(daPlanilha); app.planilha.leitura = daPlanilha.leitura; lerChecklistDaPlanilha(); }
     app.urlApp = r.urlApp || ''; app.versao = r.versao; $('versao').textContent = 'v' + r.versao; app.planilhas = r.planilhas || []; app.iaLigada = r.iaLigada; app.memoriaLigada = r.memoriaLigada; app.memoriaInstalada = r.memoriaInstalada; app.cosmosLigado = r.cosmosLigado; app.extrasDisponiveis = r.extrasDisponiveis || []; app.marcas = r.marcas || [];
     mostrarAbaAprovar(r.paraAprovar || 0);
     if (app.painel === 'config') abrirConfig();
@@ -3818,7 +3886,7 @@
         return;
       }
       // Relê a planilha escolhida: abas e colunas extras podem ter mudado direto no Google Planilhas.
-      if (app.planilha) chamar('apiEscolherPlanilha', app.planilha.id, app.planilha.aba).then(function (x) { definirPlanilha(x.planilha); }).catch(function () { /* segue com o que já sabe */ });
+      if (app.planilha) chamar('apiEscolherPlanilha', app.planilha.id, app.planilha.aba).then(function (x) { definirPlanilha(x.planilha); fazerMiniaturas(x.planilha, x.semMiniatura); }).catch(function () { /* segue com o que já sabe */ });
       if (!app.planilha && app.planilhas.length) definirPlanilha(app.planilhas[0]);
       if (!app.planilha) abrirPlanilhas();
       else if (!$('caixa').value) $('caixa').focus();
