@@ -107,6 +107,7 @@
   .pilula span { overflow: hidden; text-overflow: ellipsis; }
   .pilula svg { width: 16px; height: 16px; flex: none; opacity: .8; }
   .pilula.clara { background: var(--forte); color: var(--sobre-forte); font-weight: 600; }
+  .modo-ajuda #btnChecklist { display: none; }
   /* Escolha da NF: menu do próprio app, abaixo da pílula. */
   .nf-ver-caixa { position: relative; display: inline-flex; max-width: 100%; }
   .nf-menu {
@@ -454,6 +455,10 @@
           </button>
           <div id="nfVer" class="nf-menu oculto" role="menu" aria-label="Qual NF você está vendo"></div>
         </span>
+        <button class="pilula" id="btnChecklist" type="button" aria-pressed="false" title="Ler também o checklist escrito à mão (ligue só quando o produto tiver checklist)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span id="checklistTxt">Checklist</span>
+        </button>
       </div>
       <div class="aud-inicio oculto" id="audInicio"></div>
       <div class="nfe-campo oculto" id="nfeBloco">
@@ -1035,7 +1040,7 @@
   function novoCartao() {
     var caixa = $('caixa').value.trim();
     return {
-      id: uuid(), planilhaId: app.planilha.id, planilhaNome: app.planilha.nome, aba: app.planilha.aba, extras: (app.planilha.extras || []).slice(), caixa: caixa, nfe: $('nfe').value.trim(),
+      id: uuid(), planilhaId: app.planilha.id, planilhaNome: app.planilha.nome, aba: app.planilha.aba, extras: extrasDaLeitura(), caixa: caixa, nfe: $('nfe').value.trim(),
       criadoEm: Date.now(), estado: 'lendo', fotos: [], resultado: null, valores: { QTDE: '1' }, editados: {}, original: {}, erro: '', etapa: ''
     };
   }
@@ -1317,7 +1322,7 @@
     grupos.forEach(function (grupo) {
       var k = assinaturaGrupo(grupo);
       if (adiantadas[k]) return;
-      var p = identificar(fotosDoCartao(grupo), { registroId: '', planilhaId: app.planilha.id, extras: (app.planilha.extras || []).slice(), forcarIA: false, nfe: $('nfe').value.trim() });
+      var p = identificar(fotosDoCartao(grupo), { registroId: '', planilhaId: app.planilha.id, extras: extrasDaLeitura(), forcarIA: false, nfe: $('nfe').value.trim() });
       p.catch(function () { delete adiantadas[k]; });
       adiantadas[k] = p;
     });
@@ -2235,6 +2240,36 @@
       '<p class="dica" style="margin:0">Uso as abas que já existem: se a planilha já tiver as colunas do SCAN, sigo o formato dela; se tiver uma aba vazia, coloco nela as colunas padrão. Só crio a aba SCAN se todas as abas tiverem outros dados.</p>';
     abrirPainel('planilha', 'Planilha', html, true);
     buscarNoDrive();
+  }
+
+  /**
+   * Checklist escrito à mão: só é lido com a pílula "Checklist" ligada (nem todo produto tem). Com ela desligada,
+   * a coluna CHECKLIST fica como está e a leitura não espera a IA por causa dela.
+   */
+  function extrasDaLeitura() {
+    var l = (app.planilha && app.planilha.extras || []).filter(function (k) { return k !== 'CHECKLIST'; });
+    if (app.checklist && !app.ajuda) l.push('CHECKLIST');
+    return l;
+  }
+  function mostrarChecklist() {
+    var b = $('btnChecklist');
+    if (!b) return;
+    b.classList.toggle('clara', !!app.checklist);
+    b.setAttribute('aria-pressed', app.checklist ? 'true' : 'false');
+    $('checklistTxt').textContent = app.checklist ? 'Checklist ligado' : 'Checklist';
+  }
+  function alternarChecklist() {
+    if (!app.planilha || app.ajuda) return;
+    app.checklist = !app.checklist;
+    guardar('checklist', app.checklist);
+    mostrarChecklist();
+    if (!app.checklist) { aviso('Checklist desligado: as próximas fotos são só do produto.'); return; }
+    if ((app.planilha.extras || []).indexOf('CHECKLIST') >= 0) { aviso('Checklist ligado: tire as fotos do produto e do checklist juntas.'); return; }
+    // A aba ainda não tem a coluna: cria no fim (nunca mexe nas outras).
+    chamar('apiAdicionarExtra', { planilhaId: app.planilha.id, aba: app.planilha.aba, chave: 'CHECKLIST' }).then(function (r) {
+      definirPlanilha(r.planilha);
+      aviso('Checklist ligado: criei a coluna CHECKLIST na aba ' + r.planilha.aba + '. Tire as fotos do produto e do checklist juntas.');
+    }).catch(function (e) { app.checklist = false; guardar('checklist', false); mostrarChecklist(); aviso(e.message, true); });
   }
 
   function adicionarExtra(botao) {
@@ -3474,6 +3509,9 @@
     $('btnEnviar').onclick = enviar;
     $('btnPlanilha').onclick = abrirPlanilhas;
     $('btnAprovar').onclick = abrirAprovar;
+    app.checklist = !!lembrar('checklist', false);
+    mostrarChecklist();
+    $('btnChecklist').onclick = alternarChecklist;
     $('btnHistorico').onclick = abrirHistorico;
     $('btnConfig').onclick = abrirConfig;
     $('btnFecharPainel').onclick = fecharPainel;
