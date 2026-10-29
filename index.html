@@ -1161,6 +1161,9 @@
       // As fotos vão para o Drive depois da leitura: não disputam a internet com ela.
       enviarFotos(c).catch(function () { /* tenta de novo ao salvar */ });
       c.resultado = r;
+      // Só faltam informações extras (lote, checklist...): salva já e a IA lê essas depois (fotos guardadas aqui antes de subirem).
+      c.iaDepois = (r.iaDepois || []).slice();
+      if (c.iaDepois.length) guardarFotosDepois(c);
       guardarEtiquetas(r, r.campos.EAN && r.campos.EAN.valor);
       // EAN que só a IA leu: a memória é consultada agora, fora da leitura, e fica pronta para a próxima unidade.
       var eanLido = eanDe(r.campos.EAN && r.campos.EAN.valor);
@@ -2013,6 +2016,7 @@
       atualizar(c);
       if (app.painel === 'historico') carregarHistorico();
       if (c.fotosPendentes) completarFotos(c);
+      if (c.iaDepois && c.iaDepois.length) completarExtras(c);
       if (!c.paraAprovar) ensinarMemoria(c);
       registrarLote(c);
       bip('salvo');
@@ -2049,6 +2053,48 @@
       c.fotosPendentes = false;
       atualizar(c);
     }).catch(function () { /* tenta de novo na próxima vez que o SCAN abrir */ }).then(function () { delete completando[c.id]; });
+  }
+
+  /**
+   * Informações extras que a IA lê depois de salvar (lote, checklist...). As fotos (com o contraste realçado
+   * para a letra de mão) ficam guardadas no cartão até a IA terminar; sem elas, o servidor usa as do Drive.
+   * A IA ocupada tenta de novo em 15 s, 45 s e 2 min. Só preenche células que ainda estão vazias.
+   */
+  function guardarFotosDepois(c) {
+    var escrita = c.iaDepois.indexOf('CHECKLIST') >= 0;
+    var copias = c.fotos.map(function (f) { return { full: f.full }; });
+    c.fotosDepois = Promise.all(copias.map(function (f) { return escrita ? realcarEscrita(f) : Promise.resolve(f.full || ''); }))
+      .catch(function () { return []; });
+  }
+  var completandoExtras = {};
+  function completarExtras(c, tentativa) {
+    if (c.iaDepois) c.iaDepois = c.iaDepois.filter(function (k) { return !c.valores[k]; });   // o que você já escreveu não vai para a IA
+    if (completandoExtras[c.id] || !c.iaDepois || !c.iaDepois.length) return;
+    completandoExtras[c.id] = true;
+    var n = tentativa || 0;
+    var codigos = [];
+    c.fotos.forEach(function (f) { (f.codigos || []).forEach(function (k) { codigos.push({ valor: k.valor, formato: k.formato, foto: f.n }); }); });
+    (c.fotosDepois && c.fotosDepois.then ? c.fotosDepois : Promise.resolve([])).then(function (imagens) {
+      // Sem a foto no aparelho, o servidor lê a do Drive: espera ela subir.
+      var faltam = c.fotos.some(function (f, i) { return !(imagens || [])[i] && !f.driveId; });
+      return (faltam ? enviarFotos(c) : Promise.resolve()).then(function () {
+        return chamar('apiCompletar', { planilhaId: c.planilhaId, aba: c.aba, registroId: c.id, fotos: c.fotos.map(function (f) { return f.driveId || ''; }),
+          imagens: imagens || [], codigos: codigos, extras: c.iaDepois, descricao: c.valores.DESCRICAO || '' });
+      });
+    }).then(function (r) {
+      Object.keys(r.valores || {}).forEach(function (k) {
+        if (c.valores[k]) return;   // você já preencheu
+        c.valores[k] = r.valores[k]; c.original[k] = r.valores[k];
+        if (c.resultado && c.resultado.campos[k]) { c.resultado.campos[k].valor = r.valores[k]; c.resultado.campos[k].estado = 'ok'; c.resultado.campos[k].nota = ''; }
+      });
+      c.iaDepois = []; delete c.fotosDepois;
+      atualizar(c);
+    }).catch(function (e) {
+      if (e && (e.codigo === 'IA_FALHA' || e.codigo === 'IA_LIMITE') && n < ESPERAS_IA.length) {
+        setTimeout(function () { completarExtras(c, n + 1); }, ESPERAS_IA[n]);
+      }
+      // Outro erro: tenta de novo na próxima vez que o SCAN abrir.
+    }).then(function () { delete completandoExtras[c.id]; });
   }
 
   /**
@@ -3770,6 +3816,7 @@
         if (c.estado === 'salvando') { c.estado = 'revisar'; salvar(c); }
         else if (c.estado === 'revisar') enviarFotos(c).catch(function () { /* tenta de novo ao salvar */ });
         else if (c.fotosPendentes) completarFotos(c);
+        if (c.estado === 'salvo' && c.iaDepois && c.iaDepois.length) completarExtras(c);
       });
     });
     entrar();
