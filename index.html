@@ -2251,6 +2251,15 @@
     if (app.checklist && !app.ajuda) l.push('CHECKLIST');
     return l;
   }
+  // A pílula fica guardada por planilha e aba: ao voltar para uma em que o checklist estava ligado, ele liga de novo.
+  // Sem nada guardado, liga se a aba já tem a coluna CHECKLIST (foi ligado ali antes). O LOTE segue a coluna da aba.
+  function chaveChecklist() { return app.planilha ? 'checklist:' + app.planilha.id + ':' + app.planilha.aba : 'checklist'; }
+  function lerChecklistDaPlanilha() {
+    var p = app.planilha;
+    var temColuna = !!(p && (p.extras || []).indexOf('CHECKLIST') >= 0);
+    app.checklist = !!(p && !app.ajuda && lembrar(chaveChecklist(), temColuna));
+    mostrarChecklist();
+  }
   function mostrarChecklist() {
     var b = $('btnChecklist');
     if (!b) return;
@@ -2261,7 +2270,7 @@
   function alternarChecklist() {
     if (!app.planilha || app.ajuda) return;
     app.checklist = !app.checklist;
-    guardar('checklist', app.checklist);
+    guardar(chaveChecklist(), app.checklist);
     mostrarChecklist();
     if (!app.checklist) { aviso('Checklist desligado: as próximas fotos são só do produto.'); return; }
     if ((app.planilha.extras || []).indexOf('CHECKLIST') >= 0) { aviso('Checklist ligado: tire as fotos do produto e do checklist juntas.'); return; }
@@ -2269,7 +2278,7 @@
     chamar('apiAdicionarExtra', { planilhaId: app.planilha.id, aba: app.planilha.aba, chave: 'CHECKLIST' }).then(function (r) {
       definirPlanilha(r.planilha);
       aviso('Checklist ligado: criei a coluna CHECKLIST na aba ' + r.planilha.aba + '. Tire as fotos do produto e do checklist juntas.');
-    }).catch(function (e) { app.checklist = false; guardar('checklist', false); mostrarChecklist(); aviso(e.message, true); });
+    }).catch(function (e) { app.checklist = false; guardar(chaveChecklist(), false); mostrarChecklist(); aviso(e.message, true); });
   }
 
   function adicionarExtra(botao) {
@@ -2318,6 +2327,7 @@
   function definirPlanilha(p) {
     app.planilha = p;
     guardar('planilha', p);
+    lerChecklistDaPlanilha();
     $('nomePlanilha').innerHTML = p ? esc(p.aba) + ' <small>· ' + esc(p.nome) + '</small>' : 'Escolher planilha';
     app.totais = {};
     carregarTotal(0);
@@ -3509,8 +3519,7 @@
     $('btnEnviar').onclick = enviar;
     $('btnPlanilha').onclick = abrirPlanilhas;
     $('btnAprovar').onclick = abrirAprovar;
-    app.checklist = !!lembrar('checklist', false);
-    mostrarChecklist();
+    lerChecklistDaPlanilha();
     $('btnChecklist').onclick = alternarChecklist;
     $('btnHistorico').onclick = abrirHistorico;
     $('btnConfig').onclick = abrirConfig;
