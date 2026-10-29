@@ -1408,7 +1408,7 @@
     function trabalhador() {
       var f = faltam[i++];
       if (!f) return Promise.resolve();
-      return chamar('apiEnviarFoto', { planilhaId: c.planilhaId, registroId: c.id, caixa: c.caixa, indice: f.n, base64: f.full, miniatura: f.thumb }).then(function (r) {
+      return chamar('apiEnviarFoto', { planilhaId: c.planilhaId, registroId: c.id, caixa: c.caixa, indice: f.n, base64: f.full }).then(function (r) {
         f.driveId = r.id; f.url = r.url; delete f.full; Banco.salvar(c);
       }).then(trabalhador);
     }
@@ -2045,8 +2045,7 @@
     completando[c.id] = true;
     enviarFotos(c).then(function () {
       return chamar('apiFotos', { planilhaId: c.planilhaId, aba: c.aba, registroId: c.id, fotos: c.fotos.map(function (f) { return f.url; }).filter(Boolean) });
-    }).then(function (r) {
-      if (r && r.erroMiniatura && !avisouMiniatura) { avisouMiniatura = true; aviso('A miniatura da foto não entrou na planilha: ' + r.erroMiniatura, true); }
+    }).then(function () {
       c.fotosPendentes = false;
       atualizar(c);
     }).catch(function () { /* tenta de novo na próxima vez que o SCAN abrir */ }).then(function () { delete completando[c.id]; });
@@ -2356,7 +2355,6 @@
       definirPlanilha(r.planilha);
       app.planilhas = [r.planilha].concat(app.planilhas.filter(function (p) { return p.id !== r.planilha.id; }));
       fecharPainel();
-      fazerMiniaturas(r.planilha, r.semMiniatura);
       aviso('Gravando em "' + r.planilha.nome + '", aba ' + r.planilha.aba + ' (' + r.total + ' registro(s)).' + (r.planilha.criadas.length ? ' Criei: ' + r.planilha.criadas.join(', ') + '.' : ''));
     }).catch(function (e) {
       if (botao) { botao.disabled = false; botao.innerHTML = texto; }
@@ -3814,51 +3812,6 @@
     });
   }
 
-  /**
-   * Linhas antigas sem miniatura na célula FOTO: o celular baixa a foto do Drive (com a sua conta),
-   * faz uma pequena e manda para a planilha, 6 de cada vez. Roda depois de abrir a planilha, sem atrapalhar a leitura.
-   */
-  var miniaturasRodando = false, avisouMiniatura = false;
-  function fazerMiniaturas(planilha, ids) {
-    if (!SITE || !planilha || !ids || !ids.length || miniaturasRodando) return;
-    miniaturasRodando = true;
-    var fila = ids.slice(0, 30), feitas = 0, erro = '';
-    function pequena(id) {
-      return Login.obter().then(function (valor) {
-        return fetch('https://www.googleapis.com/drive/v3/files/' + encodeURIComponent(id) + '?alt=media&supportsAllDrives=true', { headers: { Authorization: 'Bearer ' + valor } });
-      }).then(function (resp) {
-        if (!resp.ok) throw new Error('Drive ' + resp.status);
-        return resp.blob();
-      }).then(function (b) {
-        return new Promise(function (ok, falha) {
-          var img = new Image(), url = URL.createObjectURL(b);
-          img.onload = function () { URL.revokeObjectURL(url); ok({ id: id, src: desenhar(img, 240).toDataURL('image/jpeg', 0.7) }); };
-          img.onerror = function () { URL.revokeObjectURL(url); falha(new Error('foto ilegível')); };
-          img.src = url;
-        });
-      }).catch(function () { return null; });
-    }
-    function lote() {
-      var parte = fila.splice(0, 6);
-      if (!parte.length) return Promise.resolve();
-      return Promise.all(parte.map(pequena)).then(function (itens) {
-        itens = itens.filter(Boolean);
-        if (!itens.length) return lote();
-        return chamar('apiMiniaturas', { planilhaId: planilha.id, aba: planilha.aba, itens: itens }).then(function (r) {
-          feitas += r.feitas || 0;
-          if (r.erro) erro = r.erro;
-          if (!r.feitas && r.erro) return; // o Google recusou: não adianta mandar o resto agora
-          return lote();
-        });
-      });
-    }
-    lote().catch(function (e) { erro = e.message; }).then(function () {
-      miniaturasRodando = false;
-      if (feitas) aviso(feitas === 1 ? '1 linha ganhou a miniatura da foto.' : feitas + ' linhas ganharam a miniatura da foto.');
-      else if (erro) aviso('As miniaturas não entraram na planilha: ' + erro, true);
-    });
-  }
-
   /** Dados do início (versão, se é o dono, código da equipe...). Guardados no aparelho para a tela abrir já pronta. */
   function aplicarInicio(r) {
     app.email = r.email || ''; if (SITE) Login.anotarConta(app.email); app.meuCodigo = r.meuCodigo || ''; app.confiaveis = r.confiaveis || app.confiaveis || [];
@@ -3886,7 +3839,7 @@
         return;
       }
       // Relê a planilha escolhida: abas e colunas extras podem ter mudado direto no Google Planilhas.
-      if (app.planilha) chamar('apiEscolherPlanilha', app.planilha.id, app.planilha.aba).then(function (x) { definirPlanilha(x.planilha); fazerMiniaturas(x.planilha, x.semMiniatura); }).catch(function () { /* segue com o que já sabe */ });
+      if (app.planilha) chamar('apiEscolherPlanilha', app.planilha.id, app.planilha.aba).then(function (x) { definirPlanilha(x.planilha); }).catch(function () { /* segue com o que já sabe */ });
       if (!app.planilha && app.planilhas.length) definirPlanilha(app.planilhas[0]);
       if (!app.planilha) abrirPlanilhas();
       else if (!$('caixa').value) $('caixa').focus();
