@@ -1943,9 +1943,13 @@
     aviso('Separei em 2 produtos.');
   }
 
-  /** Tira da planilha a linha de um produto já salvo (as fotos ficam no Drive). */
+  /** Produtos deste aparelho que ainda não estão na planilha: as fotos deles não são sobra. */
+  function naoSalvos() {
+    return app.cartoes.filter(function (c) { return c.estado !== 'salvo'; }).map(function (c) { return c.id; }).slice(0, 300);
+  }
+  /** Tira da planilha a linha de um produto já salvo; as fotos dele vão para a lixeira do Drive. */
   function excluirSalvo(c, botao) {
-    if (!window.confirm('Excluir este produto da planilha (linha ' + c.linha + ')? A linha inteira sai da planilha.')) return;
+    if (!window.confirm('Excluir este produto da planilha (linha ' + c.linha + ')? A linha inteira sai da planilha e as fotos vão para a lixeira do Drive.')) return;
     if (botao) botao.disabled = true;
     chamar('apiExcluir', { planilhaId: c.planilhaId, aba: c.aba || (app.planilha && app.planilha.aba), id: c.id, linha: c.linha }).then(function (r) {
       // As linhas de baixo sobem uma.
@@ -2406,7 +2410,7 @@
   function usarPlanilha(linkOuId, botao, aba) {
     var texto = botao ? botao.innerHTML : '';
     if (botao) { botao.disabled = true; botao.textContent = 'Abrindo…'; }
-    return chamar('apiEscolherPlanilha', linkOuId, aba || '').then(function (r) {
+    return chamar('apiEscolherPlanilha', linkOuId, aba || '', naoSalvos()).then(function (r) {
       definirPlanilha(r.planilha);
       app.planilhas = [r.planilha].concat(app.planilhas.filter(function (p) { return p.id !== r.planilha.id; }));
       fecharPainel();
@@ -3896,7 +3900,7 @@
         return;
       }
       // Relê a planilha escolhida: abas e colunas extras podem ter mudado direto no Google Planilhas.
-      if (app.planilha) chamar('apiEscolherPlanilha', app.planilha.id, app.planilha.aba).then(function (x) { definirPlanilha(x.planilha); }).catch(function () { /* segue com o que já sabe */ });
+      if (app.planilha) chamar('apiEscolherPlanilha', app.planilha.id, app.planilha.aba, naoSalvos()).then(function (x) { definirPlanilha(x.planilha); }).catch(function () { /* segue com o que já sabe */ });
       if (!app.planilha && app.planilhas.length) definirPlanilha(app.planilhas[0]);
       if (!app.planilha) abrirPlanilhas();
       else if (!$('caixa').value) $('caixa').focus();
