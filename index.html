@@ -1620,6 +1620,7 @@
       var prNf = progressoDoCartao(c);
       corpo = '<div class="nota">' + [c.valores.SERIAL && 'Serial ' + esc(c.valores.SERIAL), c.valores.EAN && 'EAN ' + esc(c.valores.EAN), Number(c.valores.QTDE) > 1 && 'Qtde ' + esc(c.valores.QTDE)].filter(Boolean).join(' · ') + '</div>' +
         (prNf ? '<div class="nota">' + esc(prNf) + '</div>' : '') + htmlJuncao(c) +
+        (c.fotosPendentes && c.fotosErro ? '<div class="nota divergente">As fotos não chegaram na planilha. ' + esc(c.fotosErro) + '</div><div class="rodape"><button class="btn principal" type="button" data-acao="reenviarFotos">Reenviar fotos</button></div>' : '') +
         (c.paraAprovar ? '<div class="rodape dois">' : '<div class="rodape tres">') + '<button class="btn sec curto" type="button" data-acao="corrigir">Corrigir</button>' +
         (c.paraAprovar ? '' : '<button class="btn sec curto" type="button" data-acao="excluir">Excluir</button>') +
         '<button class="btn sec curto" type="button" data-acao="fechar">Ocultar</button></div>';
@@ -2042,17 +2043,25 @@
     });
   }
 
-  /** Produto já na planilha: sobe as fotos que faltam e põe os links na linha dele. Não se perde se a página fechar. */
+  /**
+   * Produto já na planilha: sobe as fotos que faltam e põe os links na linha dele. Não se perde se a página fechar.
+   * Se falhar (internet, Google ocupado), tenta de novo em 15 s, 45 s e 2 min; depois o cartão avisa e tem "Reenviar fotos".
+   */
   var completando = {};
-  function completarFotos(c) {
+  function completarFotos(c, tentativa) {
     if (completando[c.id] || !c.fotosPendentes) return;
     completando[c.id] = true;
+    var n = tentativa || 0;
     enviarFotos(c).then(function () {
       return chamar('apiFotos', { planilhaId: c.planilhaId, aba: c.aba, registroId: c.id, fotos: c.fotos.map(function (f) { return f.url; }).filter(Boolean) });
     }).then(function () {
-      c.fotosPendentes = false;
+      c.fotosPendentes = false; c.fotosErro = '';
       atualizar(c);
-    }).catch(function () { /* tenta de novo na próxima vez que o SCAN abrir */ }).then(function () { delete completando[c.id]; });
+    }).catch(function (e) {
+      if (n < ESPERAS_IA.length) { setTimeout(function () { completarFotos(c, n + 1); }, ESPERAS_IA[n]); return; }
+      c.fotosErro = (e && e.message) || 'Sem conexão com o Google agora.';
+      atualizar(c);
+    }).then(function () { delete completando[c.id]; });
   }
 
   /**
@@ -3711,6 +3720,7 @@
       else if (acao === 'separarNao') { c.separando = false; c.separar = {}; renderCartao(c); }
       else if (acao === 'separarOk') separarFotos(c);
       else if (acao === 'excluir') excluirSalvo(c, alvo);
+      else if (acao === 'reenviarFotos') { c.fotosErro = ''; atualizar(c); completarFotos(c); }
       else if (acao === 'fechar') { app.cartoes = app.cartoes.filter(function (x) { return x !== c; }); alvo.closest('.cartao').remove(); Banco.apagar(c.id); renderResumo(); }
     });
 
