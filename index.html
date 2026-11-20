@@ -7,9 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="SCAN">
   <title>SCAN</title>
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
-  <script>try { document.documentElement.setAttribute('data-tema', JSON.parse(localStorage.getItem('scan:tema')) || 'escuro'); } catch (e) {}</script>
+  <script>try { document.documentElement.setAttribute('data-tema', JSON.parse(localStorage.getItem('scan:tema')) || (matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'escuro')); } catch (e) {}</script>
   <style>
   /*
    * Visual do SCAN ("escuro elegante", escolhido pelo João): só preto, branco e cinza.
@@ -58,7 +56,7 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; background: var(--fundo); color: var(--texto); }
-  body { font: 15px/1.45 "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
+  body { font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-text-size-adjust: 100%; -webkit-font-smoothing: antialiased; }
   button, input, select, textarea { font: inherit; color: inherit; }
   button { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   a { color: inherit; }
@@ -73,6 +71,7 @@
   /* Logo sem fundo próprio (transparente): fica na cor da tela em qualquer tema. */
   .logo { width: 60px; height: 60px; display: block; flex: none; }
   :root[data-tema="claro"] .logo { filter: invert(1); }
+  .voltar-apps { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; color: var(--suave); text-decoration: none; font-size: 22px; line-height: 1; }
   @media (min-width: 900px) { .logo { width: 68px; height: 68px; } }
   .planilha {
     flex: 0 1 auto; min-width: 0; max-width: 420px; margin-right: auto; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 14px;
@@ -89,7 +88,7 @@
   }
   .caixa-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .caixa-cab .rotulo { margin: 0; }
-  .caixa-cab .rotulo small { display: block; font-size: 11px; letter-spacing: .04em; text-transform: none; color: var(--fraco); font-weight: 400; }
+  .caixa-cab .rotulo small { display: block; font-size: 12px; letter-spacing: .04em; text-transform: none; color: var(--fraco); font-weight: 400; }
   .hero input.caixa {
     width: 100%; height: 60px; font-size: 26px; font-weight: 700; text-align: center; letter-spacing: .08em; text-transform: uppercase;
     background: var(--campo-fundo); border: 1px solid var(--linha-forte); color: var(--texto); border-radius: 18px;
@@ -148,7 +147,7 @@
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px; background: var(--nav-fundo); border-radius: 26px;
     border: 1px solid var(--borda); box-shadow: 0 10px 30px rgba(0,0,0,.25); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   }
-  .nav button { border: 0; background: none; display: grid; justify-items: center; align-content: center; gap: 3px; color: var(--suave); position: relative; font-size: 10.5px; border-radius: 20px; }
+  .nav button { border: 0; background: none; display: grid; justify-items: center; align-content: center; gap: 3px; color: var(--suave); position: relative; font-size: 12px; border-radius: 20px; }
   .nav button svg { width: 22px; height: 22px; }
   .nav button.ativo { background: var(--forte); color: var(--sobre-forte); font-weight: 600; }
   @media (min-width: 900px) {
@@ -158,11 +157,11 @@
     .nav button:not(.ativo):hover { color: var(--texto); }
     .nav .bolinha { position: static; margin: 0; }
   }
-  .bolinha { position: absolute; top: 4px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--forte); color: var(--sobre-forte); font-size: 11px; line-height: 18px; font-weight: 700; }
+  .bolinha { position: absolute; top: 4px; left: 50%; margin-left: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--forte); color: var(--sobre-forte); font-size: 12px; line-height: 18px; font-weight: 700; }
   .nav button.ativo .bolinha { background: var(--sobre-forte); color: var(--forte); }
   /* A aba "Aprovar" só existe quando há algo esperando: com ela, cinco colunas. */
   .com-aprovar .nav { grid-template-columns: repeat(5, 1fr); }
-  .com-aprovar .nav button { font-size: 10px; }
+  .com-aprovar .nav button { font-size: 12px; }
   .modo-ajuda.com-aprovar .nav { grid-template-columns: repeat(2, 1fr); }
   .aud-inicio { grid-column: 1 / -1; margin-top: 10px; }
   .aud-inicio .secao { margin: 0 0 8px; }
@@ -183,7 +182,7 @@
   .captura { display: grid; gap: 16px; }
 
   .bloco { background: var(--cartao); border: 1px solid var(--borda); border-radius: 26px; padding: 20px; box-shadow: var(--sombra); }
-  label.rotulo, .rotulo { display: block; font-size: 11px; font-weight: 500; color: var(--suave); text-transform: uppercase; letter-spacing: .16em; margin: 0 0 8px; }
+  label.rotulo, .rotulo { display: block; font-size: 12px; font-weight: 500; color: var(--suave); text-transform: uppercase; letter-spacing: .16em; margin: 0 0 8px; }
   input.entrada, textarea.entrada, select.entrada {
     width: 100%; height: var(--toque); padding: 0 14px; border: 1px solid var(--linha); border-radius: var(--raio-p); background: var(--campo); outline: none; min-width: 0;
   }
@@ -217,9 +216,9 @@
   .mini { position: relative; aspect-ratio: 1; border-radius: 14px; overflow: hidden; background: var(--campo); }
   .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .mini .tirar { position: absolute; top: 5px; right: 5px; width: 28px; height: 28px; border-radius: 50%; border: 0; background: rgba(0,0,0,.7); color: #fff; font-size: 16px; line-height: 28px; padding: 0; }
-  .mini .num { position: absolute; left: 5px; bottom: 5px; background: rgba(0,0,0,.7); color: #fff; font-size: 11px; padding: 1px 7px; border-radius: 999px; }
-  .mini .cod { position: absolute; right: 5px; bottom: 5px; background: #fff; color: #0d0d0d; font-size: 11px; padding: 1px 7px; border-radius: 999px; font-weight: 700; }
-  .mini .cod.alerta { background: #0d0d0d; color: #fff; font-weight: 600; font-size: 10px; left: 5px; right: 5px; text-align: center; }
+  .mini .num { position: absolute; left: 5px; bottom: 5px; background: rgba(0,0,0,.7); color: #fff; font-size: 12px; padding: 1px 7px; border-radius: 999px; }
+  .mini .cod { position: absolute; right: 5px; bottom: 5px; background: #fff; color: #0d0d0d; font-size: 12px; padding: 1px 7px; border-radius: 999px; font-weight: 700; }
+  .mini .cod.alerta { background: #0d0d0d; color: #fff; font-weight: 600; font-size: 12px; left: 5px; right: 5px; text-align: center; }
   .acoes { display: grid; grid-template-columns: auto 1fr; gap: 10px; margin-top: 14px; }
   .acoes .btn { height: 50px; flex-direction: row; border-radius: 999px; }
   .acoes .btn.sec { background: transparent; border-color: transparent; color: var(--suave); }
@@ -227,7 +226,7 @@
   /* Lista de produtos */
   .resultados { display: grid; gap: 12px; align-content: start; }
   .lista-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 4px; }
-  .lista-cab h2 { font-size: 11.5px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--suave); margin: 0; }
+  .lista-cab h2 { font-size: 12px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--suave); margin: 0; }
   .contagens { display: flex; gap: 6px; flex-wrap: wrap; }
   .vazio { color: var(--suave); text-align: center; padding: 36px 16px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); font-size: 14px; box-shadow: var(--sombra); }
 
@@ -258,7 +257,7 @@
   .campo { display: grid; gap: 5px; min-width: 0; }
   .campo .topo { display: flex; align-items: center; gap: 6px; background: none; border-radius: 0; padding: 0; color: inherit; }
   .campo .topo .rotulo { margin: 0; }
-  .campo .topo .editado { margin-left: auto; font-size: 11px; color: var(--fraco); }
+  .campo .topo .editado { margin-left: auto; font-size: 12px; color: var(--fraco); }
   .ponto { width: 8px; height: 8px; border-radius: 50%; background: var(--linha-forte); flex: none; }
   .ponto.ok { background: var(--fraco); } .ponto.conferir { background: none; border: 1.5px solid var(--conferir); } .ponto.divergente { background: var(--divergente); }
   .campo.conferir .entrada { border: 1.5px dashed var(--conferir); background: var(--cartao); }
@@ -266,7 +265,7 @@
   .nota { font-size: 12.5px; color: var(--suave); line-height: 1.35; }
   .nota.divergente { color: var(--texto); font-weight: 600; } .nota.conferir { color: var(--conferir); }
   .opcoes { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-  .opcoes .rotulo { margin: 0 2px 0 0; font-size: 11px; }
+  .opcoes .rotulo { margin: 0 2px 0 0; font-size: 12px; }
   .opcao { min-height: 34px; padding: 5px 13px; border-radius: 999px; border: 1px solid var(--linha); background: var(--campo); font-size: 13px; text-align: left; overflow-wrap: anywhere; }
   .opcao:hover { border-color: var(--forte); }
   .opcao:disabled { opacity: .45; cursor: default; }
@@ -290,7 +289,7 @@
   .separar button img { width: 100%; height: 100%; object-fit: cover; display: block; opacity: .75; }
   .separar button.marcada { border-color: var(--forte); }
   .separar button.marcada img { opacity: 1; }
-  .separar .num { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,.7); color: #fff; font-size: 11px; padding: 1px 7px; border-radius: 999px; }
+  .separar .num { position: absolute; left: 4px; bottom: 4px; background: rgba(0,0,0,.7); color: #fff; font-size: 12px; padding: 1px 7px; border-radius: 999px; }
   .msg-salvo { display: flex; gap: 8px; align-items: center; color: var(--texto); font-weight: 600; font-size: 14px; }
   .cartao.salvo .cab { padding-bottom: 6px; }
 
@@ -325,7 +324,7 @@
   button.link { border: 0; background: none; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
   .registro .s { font-size: 13px; color: var(--suave); overflow-wrap: anywhere; }
   .registro.local { border: 1px dashed var(--linha-forte); }
-  .secao { font-size: 11px; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
+  .secao { font-size: 12px; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
   .lista-planilhas { display: grid; gap: 8px; }
   .item-planilha { display: flex; gap: 8px; align-items: center; }
   .item-planilha .btn { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; white-space: normal; overflow-wrap: anywhere; height: auto; min-height: var(--toque); padding: 10px 16px; line-height: 1.3; }
@@ -351,7 +350,7 @@
   .modos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   .modo { display: grid; justify-items: center; gap: 6px; padding: 14px 6px; border-radius: 16px; border: 0; background: var(--cartao); box-shadow: var(--sombra); font-size: 13px; font-weight: 600; text-align: center; }
   .modo svg { width: 26px; height: 26px; }
-  .modo small { font-weight: 400; color: var(--suave); font-size: 11.5px; }
+  .modo small { font-weight: 400; color: var(--suave); font-size: 12px; }
   .kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   #nfAuditoria, #nfLeitura { display: grid; gap: 10px; }
   #nfAuditoria { gap: 22px; }
@@ -363,7 +362,7 @@
   #nfAuditoria:empty, #nfLeitura:empty { display: none; }
   .kpi-cartao { background: var(--cartao); border-radius: 16px; padding: 10px 10px 9px; box-shadow: var(--sombra); min-width: 0; }
   .kpi-cartao b { display: block; font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
-  .kpi-cartao span { font-size: 11.5px; color: var(--suave); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kpi-cartao span { font-size: 12px; color: var(--suave); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .kpi-cartao.escuro { background: var(--forte); color: var(--sobre-forte); }
   .kpi-cartao.escuro span { color: inherit; opacity: .7; }
   .item-nf { background: var(--cartao); border-radius: 16px; padding: 12px 14px; box-shadow: var(--sombra); display: grid; gap: 6px; border: 1px solid var(--borda); }
@@ -409,8 +408,8 @@
 <body>
   <header class="topo">
     <div class="barra">
-      <svg class="logo" role="img" aria-label="SCAN" xmlns="http://www.w3.org/2000/svg" viewBox="100.0 104.5 1046 1046"><path fill="#000" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4Z"/><path fill="#fff" fill-rule="evenodd" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4ZM628.8 1094.2C644.4 1049.2 653.2 1012.9 662.5 956.0C672.4 895.0 675.6 857.2 674.7 813.5C674.2 785.7 672.8 774.1 667.5 753.4C661.6 730.3 653.7 712.0 642.2 694.5C637.3 687.1 626.2 675.0 624.3 675.0C622.4 675.0 611.5 688.4 605.4 698.2C590.7 722.0 581.3 749.9 576.3 785.0C574.1 800.5 573.8 855.7 575.8 880.5C582.3 960.9 596.8 1035.6 617.3 1094.2C620.1 1102.4 622.8 1109.0 623.1 1109.0C623.5 1109.0 626.0 1102.4 628.8 1094.2ZM685.3 992.5C710.5 950.9 723.7 930.2 733.2 917.7C752.0 892.8 780.2 861.3 825.4 814.9C899.8 738.5 918.3 716.5 936.4 682.7C956.6 644.9 966.5 607.6 972.2 547.5C974.3 525.3 973.9 435.6 971.7 412.5C963.8 331.9 946.5 277.9 914.8 235.4C883.1 192.7 838.5 161.0 783.6 142.1C737.8 126.4 692.0 121.1 610.0 122.3C548.2 123.2 518.5 126.8 481.0 138.1C411.5 158.9 354.9 200.1 323.3 253.0C296.2 298.4 282.7 352.0 277.9 433.5C276.4 459.2 277.3 530.1 279.5 553.0C284.1 602.4 290.3 630.9 303.1 661.3C321.1 704.1 341.0 730.2 409.5 800.5C470.0 862.7 495.5 891.5 518.2 923.0C529.8 939.1 570.7 1005.2 585.6 1031.7C587.2 1034.6 588.8 1037.0 589.1 1037.0C589.4 1037.0 587.2 1026.1 584.3 1012.8C559.2 899.6 555.0 864.7 557.0 787.0C557.9 749.8 557.2 720.1 555.0 697.0C545.8 604.5 506.8 528.4 433.2 459.7C409.6 437.5 386.6 419.8 347.5 393.6C322.4 376.8 320.0 374.8 320.0 370.8C320.0 366.4 323.8 364.5 329.8 365.9C340.4 368.6 375.7 385.0 397.0 397.3C500.8 457.0 552.5 534.8 568.9 656.0C570.7 668.9 572.1 687.7 572.8 708.0L573.5 727.5L579.0 717.0C593.3 690.0 612.7 661.0 619.2 657.0C624.7 653.7 626.8 654.3 634.0 661.8C643.3 671.2 658.6 695.0 672.1 721.0L675.5 727.5L676.1 706.5C678.7 622.9 699.6 552.4 738.1 498.0C764.0 461.3 805.2 425.4 851.9 398.6C875.3 385.1 909.1 368.9 919.8 366.1C926.9 364.1 931.3 367.5 929.1 373.3C928.4 375.0 921.1 380.5 906.4 390.5C853.2 426.6 828.9 446.0 799.5 476.1C730.3 546.8 698.6 619.5 692.0 722.5C691.4 731.3 691.1 762.8 691.2 792.5C691.4 849.8 690.9 860.5 685.9 894.0C681.9 921.3 672.4 968.9 661.1 1018.5C659.5 1025.7 657.9 1033.3 657.6 1035.5L656.9 1039.5L659.6 1035.0C661.1 1032.5 672.7 1013.4 685.3 992.5Z"/></svg>
-<span class="versao" id="versao"></span>
+      <a class="voltar-apps" href="https://jpaapw-star.github.io/painel/apps/" target="_top" aria-label="Voltar ao Meus apps"><span aria-hidden="true">‹</span><svg class="logo" role="img" aria-label="SCAN" xmlns="http://www.w3.org/2000/svg" viewBox="100.0 104.5 1046 1046"><path fill="#000" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4Z"/><path fill="#fff" fill-rule="evenodd" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4ZM628.8 1094.2C644.4 1049.2 653.2 1012.9 662.5 956.0C672.4 895.0 675.6 857.2 674.7 813.5C674.2 785.7 672.8 774.1 667.5 753.4C661.6 730.3 653.7 712.0 642.2 694.5C637.3 687.1 626.2 675.0 624.3 675.0C622.4 675.0 611.5 688.4 605.4 698.2C590.7 722.0 581.3 749.9 576.3 785.0C574.1 800.5 573.8 855.7 575.8 880.5C582.3 960.9 596.8 1035.6 617.3 1094.2C620.1 1102.4 622.8 1109.0 623.1 1109.0C623.5 1109.0 626.0 1102.4 628.8 1094.2ZM685.3 992.5C710.5 950.9 723.7 930.2 733.2 917.7C752.0 892.8 780.2 861.3 825.4 814.9C899.8 738.5 918.3 716.5 936.4 682.7C956.6 644.9 966.5 607.6 972.2 547.5C974.3 525.3 973.9 435.6 971.7 412.5C963.8 331.9 946.5 277.9 914.8 235.4C883.1 192.7 838.5 161.0 783.6 142.1C737.8 126.4 692.0 121.1 610.0 122.3C548.2 123.2 518.5 126.8 481.0 138.1C411.5 158.9 354.9 200.1 323.3 253.0C296.2 298.4 282.7 352.0 277.9 433.5C276.4 459.2 277.3 530.1 279.5 553.0C284.1 602.4 290.3 630.9 303.1 661.3C321.1 704.1 341.0 730.2 409.5 800.5C470.0 862.7 495.5 891.5 518.2 923.0C529.8 939.1 570.7 1005.2 585.6 1031.7C587.2 1034.6 588.8 1037.0 589.1 1037.0C589.4 1037.0 587.2 1026.1 584.3 1012.8C559.2 899.6 555.0 864.7 557.0 787.0C557.9 749.8 557.2 720.1 555.0 697.0C545.8 604.5 506.8 528.4 433.2 459.7C409.6 437.5 386.6 419.8 347.5 393.6C322.4 376.8 320.0 374.8 320.0 370.8C320.0 366.4 323.8 364.5 329.8 365.9C340.4 368.6 375.7 385.0 397.0 397.3C500.8 457.0 552.5 534.8 568.9 656.0C570.7 668.9 572.1 687.7 572.8 708.0L573.5 727.5L579.0 717.0C593.3 690.0 612.7 661.0 619.2 657.0C624.7 653.7 626.8 654.3 634.0 661.8C643.3 671.2 658.6 695.0 672.1 721.0L675.5 727.5L676.1 706.5C678.7 622.9 699.6 552.4 738.1 498.0C764.0 461.3 805.2 425.4 851.9 398.6C875.3 385.1 909.1 368.9 919.8 366.1C926.9 364.1 931.3 367.5 929.1 373.3C928.4 375.0 921.1 380.5 906.4 390.5C853.2 426.6 828.9 446.0 799.5 476.1C730.3 546.8 698.6 619.5 692.0 722.5C691.4 731.3 691.1 762.8 691.2 792.5C691.4 849.8 690.9 860.5 685.9 894.0C681.9 921.3 672.4 968.9 661.1 1018.5C659.5 1025.7 657.9 1033.3 657.6 1035.5L656.9 1039.5L659.6 1035.0C661.1 1032.5 672.7 1013.4 685.3 992.5Z"/></svg>
+</a><span class="versao" id="versao"></span>
       <button class="planilha" id="btnPlanilha" type="button" aria-label="Planilha de destino">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
         <span id="nomePlanilha">Escolher planilha</span>
@@ -2435,7 +2434,7 @@
   }
 
   /** Tema escuro (padrão) ou claro, guardado no aparelho. O <head> já aplica antes de desenhar a tela. */
-  function temaAtual() { return lembrar('tema', 'escuro') === 'claro' ? 'claro' : 'escuro'; }
+  function temaAtual() { var padrao = 'escuro'; try { if (matchMedia('(prefers-color-scheme: light)').matches) padrao = 'claro'; } catch (e) {} return lembrar('tema', padrao) === 'claro' ? 'claro' : 'escuro'; }
   function usarTema(t) {
     guardar('tema', t);
     document.documentElement.setAttribute('data-tema', t);
