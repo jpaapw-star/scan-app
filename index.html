@@ -25,7 +25,7 @@
     --borda: #232323;
     --texto: #f2f2f2;
     --suave: #8f8f8f;
-    --fraco: #6d6d6d;
+    --fraco: #8a8a8a;
     --linha: #262626;
     --linha-forte: #3a3a3a;
     --forte: #f2f2f2;
@@ -47,7 +47,7 @@
   }
   :root[data-tema="claro"] {
     --fundo: #efefef; --cartao: #ffffff; --campo: #f0f0f0; --campo-fundo: #f7f7f7; --borda: #e2e2e2;
-    --texto: #0d0d0d; --suave: #5e5e5e; --fraco: #9a9a9a; --linha: #e3e3e3; --linha-forte: #c4c4c4;
+    --texto: #0d0d0d; --suave: #5e5e5e; --fraco: #737373; --linha: #e3e3e3; --linha-forte: #c4c4c4;
     --forte: #0d0d0d; --sobre-forte: #ffffff; --nav-fundo: rgba(255,255,255,.94);
     --ok: #2b2b2b; --ok-fundo: #e9e9e9; --conferir: #4a4a4a; --conferir-fundo: #ffffff;
     --divergente: #0d0d0d; --divergente-fundo: #0d0d0d; --sobre-divergente: #ffffff;
@@ -71,7 +71,10 @@
   /* Logo sem fundo próprio (transparente): fica na cor da tela em qualquer tema. */
   .logo { width: 60px; height: 60px; display: block; flex: none; }
   :root[data-tema="claro"] .logo { filter: invert(1); }
-  .voltar-apps { display: inline-flex; align-items: center; gap: 2px; min-height: 44px; color: var(--suave); text-decoration: none; font-size: 22px; line-height: 1; }
+  .voltar-apps { display: inline-flex; align-items: center; gap: 4px; min-height: 44px; color: var(--suave); text-decoration: none; font-size: 15px; white-space: nowrap; flex: none; }
+  .voltar-apps span { font-size: 22px; line-height: 1; }
+  .marca-scan { display: none; }
+  @media (min-width: 900px) { .marca-scan { display: block; } .marca-scan .logo { width: 44px; height: 44px; } }
   @media (min-width: 900px) { .logo { width: 68px; height: 68px; } }
   .planilha {
     flex: 0 1 auto; min-width: 0; max-width: 420px; margin-right: auto; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px 0 14px;
@@ -84,11 +87,11 @@
 
   .hero {
     width: calc(100% - 28px); max-width: 1072px; margin: 4px auto 0; padding: 18px;
-    background: var(--cartao); border: 1px solid var(--borda); border-radius: 26px; box-shadow: var(--sombra);
+    background: var(--cartao); border: 0; border-radius: 26px; box-shadow: none;
   }
   .caixa-cab { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .caixa-cab .rotulo { margin: 0; }
-  .caixa-cab .rotulo small { display: block; font-size: 12px; letter-spacing: .04em; text-transform: none; color: var(--fraco); font-weight: 400; }
+  .caixa-cab .rotulo small { display: inline; margin-left: 6px; font-size: 14px; color: var(--suave); font-weight: 400; }
   .hero input.caixa {
     width: 100%; height: 60px; font-size: 26px; font-weight: 700; text-align: center; letter-spacing: .08em; text-transform: uppercase;
     background: var(--campo-fundo); border: 1px solid var(--linha-forte); color: var(--texto); border-radius: 18px;
@@ -152,7 +155,7 @@
   .nav button.ativo { background: var(--forte); color: var(--sobre-forte); font-weight: 600; }
   @media (min-width: 900px) {
     .nav { position: static; height: auto; display: flex; gap: 2px; padding: 5px; background: var(--cartao); box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; border-radius: 999px; }
-    .nav button { display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 16px; border-radius: 999px; font-size: 13.5px; }
+    .nav button { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 16px; border-radius: 999px; font-size: 13.5px; }
     .nav button svg { width: 17px; height: 17px; }
     .nav button:not(.ativo):hover { color: var(--texto); }
     .nav .bolinha { position: static; margin: 0; }
@@ -181,8 +184,8 @@
   }
   .captura { display: grid; gap: 16px; }
 
-  .bloco { background: var(--cartao); border: 1px solid var(--borda); border-radius: 26px; padding: 20px; box-shadow: var(--sombra); }
-  label.rotulo, .rotulo { display: block; font-size: 12px; font-weight: 500; color: var(--suave); text-transform: uppercase; letter-spacing: .16em; margin: 0 0 8px; }
+  .bloco { background: var(--cartao); border: 0; border-radius: 26px; padding: 20px; box-shadow: none; }
+  label.rotulo, .rotulo { display: block; font-size: 15px; font-weight: 600; color: var(--texto); margin: 0 0 8px; }
   input.entrada, textarea.entrada, select.entrada {
     width: 100%; height: var(--toque); padding: 0 14px; border: 1px solid var(--linha); border-radius: var(--raio-p); background: var(--campo); outline: none; min-width: 0;
   }
@@ -226,7 +229,7 @@
   /* Lista de produtos */
   .resultados { display: grid; gap: 12px; align-content: start; }
   .lista-cab { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding: 0 4px; }
-  .lista-cab h2 { font-size: 12px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: var(--suave); margin: 0; }
+  .lista-cab h2 { font-size: 20px; font-weight: 700; color: var(--texto); margin: 0; }
   .contagens { display: flex; gap: 6px; flex-wrap: wrap; }
   .vazio { color: var(--suave); text-align: center; padding: 36px 16px; background: var(--cartao); border: 1px solid var(--borda); border-radius: var(--raio); font-size: 14px; box-shadow: var(--sombra); }
 
@@ -324,7 +327,7 @@
   button.link { border: 0; background: none; padding: 0; color: inherit; text-decoration: underline; cursor: pointer; font: inherit; }
   .registro .s { font-size: 13px; color: var(--suave); overflow-wrap: anywhere; }
   .registro.local { border: 1px dashed var(--linha-forte); }
-  .secao { font-size: 12px; font-weight: 700; color: var(--suave); text-transform: uppercase; letter-spacing: .08em; margin-top: 6px; }
+  .secao { font-size: 15px; font-weight: 600; color: var(--texto); margin-top: 10px; }
   .lista-planilhas { display: grid; gap: 8px; }
   .item-planilha { display: flex; gap: 8px; align-items: center; }
   .item-planilha .btn { flex: 1; min-width: 0; justify-content: flex-start; text-align: left; white-space: normal; overflow-wrap: anywhere; height: auto; min-height: var(--toque); padding: 10px 16px; line-height: 1.3; }
@@ -395,6 +398,14 @@
   .foto-grande { position: fixed; inset: 0; z-index: 70; background: rgba(0,0,0,.94); display: grid; place-items: center; }
   .foto-grande img { max-width: 100%; max-height: 100%; }
 .foto-produto{margin:0 0 16px}.foto-produto img{display:block;width:100%;height:auto;max-height:70vh;object-fit:contain;border-radius:12px;background:var(--cartao, #111)}.foto-produto figcaption{padding:6px 2px;font-size:13px;opacity:.7}.foto-produto a{color:inherit}
+  /* Pergunta no visual do app (no lugar da janela do navegador) */
+  .pergunta-fundo { position: fixed; inset: 0; z-index: 200; background: rgba(0,0,0,.5); display: grid; place-items: center; padding: 16px; }
+  .pergunta { width: 100%; max-width: 380px; background: var(--cartao); color: var(--texto); border-radius: 22px; padding: 20px; box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+  .pergunta p { margin: 0 0 16px; font-size: 16px; line-height: 1.45; overflow-wrap: anywhere; }
+  .pergunta-botoes { display: grid; gap: 8px; }
+  .pergunta-botoes .btn { min-height: 48px; width: 100%; }
+  .btn.perigo { background: #d70015; color: #fff; border: 0; }
+  :root:not([data-tema="claro"]) .btn.perigo { background: #ff453a; color: #000; }
 </style>
 
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
@@ -408,8 +419,8 @@
 <body>
   <header class="topo">
     <div class="barra">
-      <a class="voltar-apps" href="https://jpaapw-star.github.io/painel/apps/" target="_top" aria-label="Voltar ao Meus apps"><span aria-hidden="true">‹</span><svg class="logo" role="img" aria-label="SCAN" xmlns="http://www.w3.org/2000/svg" viewBox="100.0 104.5 1046 1046"><path fill="#000" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4Z"/><path fill="#fff" fill-rule="evenodd" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4ZM628.8 1094.2C644.4 1049.2 653.2 1012.9 662.5 956.0C672.4 895.0 675.6 857.2 674.7 813.5C674.2 785.7 672.8 774.1 667.5 753.4C661.6 730.3 653.7 712.0 642.2 694.5C637.3 687.1 626.2 675.0 624.3 675.0C622.4 675.0 611.5 688.4 605.4 698.2C590.7 722.0 581.3 749.9 576.3 785.0C574.1 800.5 573.8 855.7 575.8 880.5C582.3 960.9 596.8 1035.6 617.3 1094.2C620.1 1102.4 622.8 1109.0 623.1 1109.0C623.5 1109.0 626.0 1102.4 628.8 1094.2ZM685.3 992.5C710.5 950.9 723.7 930.2 733.2 917.7C752.0 892.8 780.2 861.3 825.4 814.9C899.8 738.5 918.3 716.5 936.4 682.7C956.6 644.9 966.5 607.6 972.2 547.5C974.3 525.3 973.9 435.6 971.7 412.5C963.8 331.9 946.5 277.9 914.8 235.4C883.1 192.7 838.5 161.0 783.6 142.1C737.8 126.4 692.0 121.1 610.0 122.3C548.2 123.2 518.5 126.8 481.0 138.1C411.5 158.9 354.9 200.1 323.3 253.0C296.2 298.4 282.7 352.0 277.9 433.5C276.4 459.2 277.3 530.1 279.5 553.0C284.1 602.4 290.3 630.9 303.1 661.3C321.1 704.1 341.0 730.2 409.5 800.5C470.0 862.7 495.5 891.5 518.2 923.0C529.8 939.1 570.7 1005.2 585.6 1031.7C587.2 1034.6 588.8 1037.0 589.1 1037.0C589.4 1037.0 587.2 1026.1 584.3 1012.8C559.2 899.6 555.0 864.7 557.0 787.0C557.9 749.8 557.2 720.1 555.0 697.0C545.8 604.5 506.8 528.4 433.2 459.7C409.6 437.5 386.6 419.8 347.5 393.6C322.4 376.8 320.0 374.8 320.0 370.8C320.0 366.4 323.8 364.5 329.8 365.9C340.4 368.6 375.7 385.0 397.0 397.3C500.8 457.0 552.5 534.8 568.9 656.0C570.7 668.9 572.1 687.7 572.8 708.0L573.5 727.5L579.0 717.0C593.3 690.0 612.7 661.0 619.2 657.0C624.7 653.7 626.8 654.3 634.0 661.8C643.3 671.2 658.6 695.0 672.1 721.0L675.5 727.5L676.1 706.5C678.7 622.9 699.6 552.4 738.1 498.0C764.0 461.3 805.2 425.4 851.9 398.6C875.3 385.1 909.1 368.9 919.8 366.1C926.9 364.1 931.3 367.5 929.1 373.3C928.4 375.0 921.1 380.5 906.4 390.5C853.2 426.6 828.9 446.0 799.5 476.1C730.3 546.8 698.6 619.5 692.0 722.5C691.4 731.3 691.1 762.8 691.2 792.5C691.4 849.8 690.9 860.5 685.9 894.0C681.9 921.3 672.4 968.9 661.1 1018.5C659.5 1025.7 657.9 1033.3 657.6 1035.5L656.9 1039.5L659.6 1035.0C661.1 1032.5 672.7 1013.4 685.3 992.5Z"/></svg>
-</a><span class="versao" id="versao"></span>
+      <a class="voltar-apps" href="https://jpaapw-star.github.io/painel/apps/" target="_top"><span aria-hidden="true">‹</span> Meus apps</a><span class="marca-scan" aria-hidden="true"><svg class="logo" role="img" aria-label="SCAN" xmlns="http://www.w3.org/2000/svg" viewBox="100.0 104.5 1046 1046"><path fill="#000" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4Z"/><path fill="#fff" fill-rule="evenodd" d="M557.5 1150.4C447.9 1146.3 370.5 1128.7 305.0 1093.1C214.4 1043.8 154.7 960.9 126.1 844.8C111.0 783.5 105.1 723.4 105.0 631.8C104.9 487.5 122.4 388.0 161.4 310.1C179.7 273.7 198.6 247.2 225.9 219.9C288.8 157.1 374.7 122.1 496.0 110.1C531.9 106.5 547.1 105.9 611.5 105.3C690.5 104.6 727.8 105.9 773.4 111.1C877.5 122.8 956.9 156.2 1015.3 212.9C1066.0 262.1 1098.9 325.1 1118.4 410.5C1130.1 461.3 1137.7 521.7 1141.1 589.0C1142.6 618.5 1141.7 699.9 1139.6 726.0C1134.6 789.0 1125.3 838.6 1110.0 885.0C1097.3 923.4 1078.0 962.1 1056.2 992.9C1008.8 1059.9 934.2 1107.1 839.5 1130.0C799.4 1139.7 754.7 1146.1 706.5 1149.0C689.7 1150.0 575.0 1151.1 557.5 1150.4ZM628.8 1094.2C644.4 1049.2 653.2 1012.9 662.5 956.0C672.4 895.0 675.6 857.2 674.7 813.5C674.2 785.7 672.8 774.1 667.5 753.4C661.6 730.3 653.7 712.0 642.2 694.5C637.3 687.1 626.2 675.0 624.3 675.0C622.4 675.0 611.5 688.4 605.4 698.2C590.7 722.0 581.3 749.9 576.3 785.0C574.1 800.5 573.8 855.7 575.8 880.5C582.3 960.9 596.8 1035.6 617.3 1094.2C620.1 1102.4 622.8 1109.0 623.1 1109.0C623.5 1109.0 626.0 1102.4 628.8 1094.2ZM685.3 992.5C710.5 950.9 723.7 930.2 733.2 917.7C752.0 892.8 780.2 861.3 825.4 814.9C899.8 738.5 918.3 716.5 936.4 682.7C956.6 644.9 966.5 607.6 972.2 547.5C974.3 525.3 973.9 435.6 971.7 412.5C963.8 331.9 946.5 277.9 914.8 235.4C883.1 192.7 838.5 161.0 783.6 142.1C737.8 126.4 692.0 121.1 610.0 122.3C548.2 123.2 518.5 126.8 481.0 138.1C411.5 158.9 354.9 200.1 323.3 253.0C296.2 298.4 282.7 352.0 277.9 433.5C276.4 459.2 277.3 530.1 279.5 553.0C284.1 602.4 290.3 630.9 303.1 661.3C321.1 704.1 341.0 730.2 409.5 800.5C470.0 862.7 495.5 891.5 518.2 923.0C529.8 939.1 570.7 1005.2 585.6 1031.7C587.2 1034.6 588.8 1037.0 589.1 1037.0C589.4 1037.0 587.2 1026.1 584.3 1012.8C559.2 899.6 555.0 864.7 557.0 787.0C557.9 749.8 557.2 720.1 555.0 697.0C545.8 604.5 506.8 528.4 433.2 459.7C409.6 437.5 386.6 419.8 347.5 393.6C322.4 376.8 320.0 374.8 320.0 370.8C320.0 366.4 323.8 364.5 329.8 365.9C340.4 368.6 375.7 385.0 397.0 397.3C500.8 457.0 552.5 534.8 568.9 656.0C570.7 668.9 572.1 687.7 572.8 708.0L573.5 727.5L579.0 717.0C593.3 690.0 612.7 661.0 619.2 657.0C624.7 653.7 626.8 654.3 634.0 661.8C643.3 671.2 658.6 695.0 672.1 721.0L675.5 727.5L676.1 706.5C678.7 622.9 699.6 552.4 738.1 498.0C764.0 461.3 805.2 425.4 851.9 398.6C875.3 385.1 909.1 368.9 919.8 366.1C926.9 364.1 931.3 367.5 929.1 373.3C928.4 375.0 921.1 380.5 906.4 390.5C853.2 426.6 828.9 446.0 799.5 476.1C730.3 546.8 698.6 619.5 692.0 722.5C691.4 731.3 691.1 762.8 691.2 792.5C691.4 849.8 690.9 860.5 685.9 894.0C681.9 921.3 672.4 968.9 661.1 1018.5C659.5 1025.7 657.9 1033.3 657.6 1035.5L656.9 1039.5L659.6 1035.0C661.1 1032.5 672.7 1013.4 685.3 992.5Z"/></svg>
+</span><span class="versao" id="versao"></span>
       <button class="planilha" id="btnPlanilha" type="button" aria-label="Planilha de destino">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>
         <span id="nomePlanilha">Escolher planilha</span>
@@ -433,9 +444,9 @@
           <span>Aprovar</span>
           <span class="bolinha" id="bolinhaAprovar">1</span>
         </button>
-        <button type="button" id="btnConfig" aria-label="Situação">
+        <button type="button" id="btnConfig" aria-label="Ajustes">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-          <span>Situação</span>
+          <span>Ajustes</span>
         </button>
       </nav>
     </div>
@@ -554,6 +565,26 @@
   function lembrar(k, padrao) { try { var v = localStorage.getItem('scan:' + k); return v == null ? padrao : JSON.parse(v); } catch (e) { return padrao; } }
   function chaveCaixa(c) { return String(c || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }
   function hora(d) { return new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); }
+
+  /** Pergunta no visual do app (no lugar da janela cinza do navegador). opcoes: [{t:'Excluir', f:fn, perigo:true}, …]; sempre tem Cancelar. */
+  function perguntar(texto, opcoes) {
+    var velho = document.getElementById('pergunta'); if (velho) velho.remove();
+    var fundo = document.createElement('div'); fundo.id = 'pergunta'; fundo.className = 'pergunta-fundo';
+    var caixa = document.createElement('div'); caixa.className = 'pergunta'; caixa.setAttribute('role', 'alertdialog'); caixa.setAttribute('aria-modal', 'true');
+    var p = document.createElement('p'); p.textContent = texto; caixa.appendChild(p);
+    var botoes = document.createElement('div'); botoes.className = 'pergunta-botoes';
+    function fechar() { fundo.remove(); }
+    (opcoes || []).concat([{ t: 'Cancelar' }]).forEach(function (o, i, todas) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = o.t;
+      b.className = 'btn ' + (o.t === 'Cancelar' ? 'sec' : (o.perigo ? 'perigo' : 'principal'));
+      b.onclick = function () { fechar(); if (o.f) o.f(); };
+      botoes.appendChild(b);
+    });
+    caixa.appendChild(botoes); fundo.appendChild(caixa);
+    fundo.addEventListener('click', function (ev) { if (ev.target === fundo) fechar(); });
+    document.body.appendChild(fundo);
+    var primeiro = botoes.querySelector('button'); if (primeiro) primeiro.focus();
+  }
 
   var tempoToast = null;
   function aviso(msg, erro) {
@@ -1469,7 +1500,8 @@
   function mostrarTotal() {
     var k = chaveCaixa($('caixa').value), t = app.totais[k];
     $('totalCaixaNum').textContent = !k ? '—' : (t == null ? '…' : t);
-    $('totalCaixaTxt').textContent = !k ? 'sem caixa: o produto entra sem caixa' : app.ajuda ? 'mandados para aprovar nesta caixa' : (t === 1 ? 'produto nesta caixa na planilha' : 'produtos nesta caixa na planilha');
+    $('totalCaixa').classList.toggle('oculto', !k);
+    $('totalCaixaTxt').textContent = !k ? '' : app.ajuda ? 'mandados para aprovar nesta caixa' : (t === 1 ? 'produto nesta caixa na planilha' : 'produtos nesta caixa na planilha');
   }
   function carregarTotal(atraso) {
     clearTimeout(tempoTotal);
@@ -1947,8 +1979,8 @@
     return app.cartoes.filter(function (c) { return c.estado !== 'salvo'; }).map(function (c) { return c.id; }).slice(0, 300);
   }
   /** Tira da planilha a linha de um produto já salvo; as fotos dele vão para a lixeira do Drive. */
-  function excluirSalvo(c, botao) {
-    if (!window.confirm('Excluir este produto da planilha (linha ' + c.linha + ')? A linha inteira sai da planilha e as fotos vão para a lixeira do Drive.')) return;
+  function excluirSalvo(c, botao, ok) {
+    if (!ok) { perguntar('Excluir este produto da planilha (linha ' + c.linha + ')? A linha sai da planilha e as fotos vão para a lixeira do Drive.', [{ t: 'Excluir', perigo: true, f: function () { excluirSalvo(c, botao, true); } }]); return; }
     if (botao) botao.disabled = true;
     chamar('apiExcluir', { planilhaId: c.planilhaId, aba: c.aba || (app.planilha && app.planilha.aba), id: c.id, linha: c.linha }).then(function (r) {
       // As linhas de baixo sobem uma.
@@ -1968,7 +2000,7 @@
     });
   }
   function descartar(c, semPerguntar) {
-    if (!semPerguntar && !confirm('Descartar este produto? Ele não foi salvo na planilha.')) return;
+    if (!semPerguntar) { perguntar('Descartar este produto? Ele ainda não foi salvo na planilha.', [{ t: 'Descartar', perigo: true, f: function () { descartar(c, true); } }]); return; }
     app.cartoes = app.cartoes.filter(function (x) { return x !== c; });
     var el = document.querySelector('[data-cartao="' + c.id + '"]');
     if (el) el.remove();
@@ -2036,7 +2068,7 @@
       }
       if (e && e.codigo === 'EAN_INVALIDO') {
         c.estado = 'revisar'; atualizar(c);
-        if (confirm(e.message + '\n\nSalvar mesmo assim com este EAN?')) salvar(c, true);
+        perguntar(e.message + ' Salvar mesmo assim com este EAN?', [{ t: 'Salvar assim', f: function () { salvar(c, true); } }]);
         return;
       }
       c.estado = 'falha'; c.etapa = 'salvando';
@@ -2292,13 +2324,13 @@
       }
     }
     html += '<div class="secao">' + (atual ? 'Trocar de planilha' : 'Conectar uma planilha') + '</div>' +
-      '<p class="dica" style="margin:0">' + (app.email ? 'Conta Google conectada: <b>' + esc(app.email) + '</b>. ' : 'Conta Google do SCAN conectada. ') + 'Estas são as planilhas dela, das mais recentes para as mais antigas. Para usar outra conta, veja Situação → Conta Google.</p>' +
+      '<p class="dica" style="margin:0">' + (app.email ? 'Conta Google conectada: <b>' + esc(app.email) + '</b>. ' : 'Conta Google do SCAN conectada. ') + 'Estas são as planilhas dela, das mais recentes para as mais antigas. Para usar outra conta, veja Ajustes → Conta Google.</p>' +
       '<input class="entrada" id="buscaDrive" type="search" placeholder="Procurar pelo nome da planilha" autocomplete="off">' +
       '<div class="lista-planilhas" id="resultadoDrive"><div class="progresso"><span class="giro"></span>Carregando suas planilhas…</div></div>' +
       '<details class="mais"><summary>Colar o link de uma planilha</summary>' +
       '<input class="entrada" id="linkPlanilha" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off">' +
       '<button class="btn principal" type="button" id="btnUsarLink">Usar esta planilha</button></details>' +
-      '<p class="dica" style="margin:0">Uso as abas que já existem: se a planilha já tiver as colunas do SCAN, sigo o formato dela; se tiver uma aba vazia, coloco nela as colunas padrão. Só crio a aba SCAN se todas as abas tiverem outros dados.</p>';
+      '<p class="dica" style="margin:0">O SCAN usa as colunas que a planilha já tem.</p>';
     abrirPainel('planilha', 'Planilha', html, true);
     buscarNoDrive();
   }
@@ -2434,36 +2466,42 @@
   }
 
   /** Tema escuro (padrão) ou claro, guardado no aparelho. O <head> já aplica antes de desenhar a tela. */
-  function temaAtual() { var padrao = 'escuro'; try { if (matchMedia('(prefers-color-scheme: light)').matches) padrao = 'claro'; } catch (e) {} return lembrar('tema', padrao) === 'claro' ? 'claro' : 'escuro'; }
+  function temaDoAparelho() { try { return matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'escuro'; } catch (e) { return 'escuro'; } }
+  function temaEscolhido() { var t = lembrar('tema', ''); return t === 'claro' || t === 'escuro' ? t : 'auto'; }
+  function temaAtual() { var t = temaEscolhido(); return t === 'auto' ? temaDoAparelho() : t; }
   function usarTema(t) {
-    guardar('tema', t);
-    document.documentElement.setAttribute('data-tema', t);
+    if (t === 'auto') { try { localStorage.removeItem('scan:tema'); } catch (e) {} } else guardar('tema', t);
+    document.documentElement.setAttribute('data-tema', temaAtual());
     abrirConfig();
   }
+  try { matchMedia('(prefers-color-scheme: light)').addEventListener('change', function () { if (temaEscolhido() === 'auto') document.documentElement.setAttribute('data-tema', temaDoAparelho()); }); } catch (e) {}
 
   function abrirConfig() {
     function linha(titulo, ligado, txt) {
       return '<div class="situacao"><div class="t">' + titulo + '<span class="selo ' + (ligado ? 'ok' : 'neutro') + '">' + (ligado ? 'Ligada' : 'Desligada') + '</span></div><div class="s">' + txt + '</div></div>';
     }
     var rolagem = app.painel === 'config' ? $('painelCorpo').scrollTop : 0;
-    var tema = temaAtual();
+    var tema = temaEscolhido();
     var blocoTema = '<div class="situacao"><div class="t">Aparência</div><div class="temas">' +
-      '<button type="button" class="opcao' + (tema === 'escuro' ? ' escolhida' : '') + '" data-tema="escuro">Escuro</button>' +
-      '<button type="button" class="opcao' + (tema === 'claro' ? ' escolhida' : '') + '" data-tema="claro">Claro</button></div></div>' +
+      '<button type="button" class="opcao' + (tema === 'auto' ? ' escolhida' : '') + '" data-tema="auto">Igual ao aparelho</button>' +
+      '<button type="button" class="opcao' + (tema === 'claro' ? ' escolhida' : '') + '" data-tema="claro">Claro</button>' +
+      '<button type="button" class="opcao' + (tema === 'escuro' ? ' escolhida' : '') + '" data-tema="escuro">Escuro</button></div></div>' +
       '<div class="situacao"><div class="t">Som</div><div class="s">Um bip quando o produto é salvo; dois bips graves quando precisa conferir.</div><div class="temas">' +
       '<button type="button" class="opcao' + (somLigado() ? ' escolhida' : '') + '" data-som="1">Ligado</button>' +
       '<button type="button" class="opcao' + (!somLigado() ? ' escolhida' : '') + '" data-som="0">Desligado</button></div></div>';
     if (!app.versao) {   // ainda não chegou a resposta do Google: não mostra "Desligada" sem saber
-      abrirPainel('config', 'Situação', blocoTema + '<div class="situacao"><div class="progresso"><span class="giro"></span>Conectando ao Google…</div></div>', true);
+      abrirPainel('config', 'Ajustes', blocoTema + '<div class="situacao"><div class="progresso"><span class="giro"></span>Conectando ao Google…</div></div>', true);
       return;
     }
-    abrirPainel('config', 'Situação', blocoTema +
-      linha('Leitura com IA', app.iaLigada, app.iaLigada ? 'Google Gemini. Só é usada quando o código de barras e a memória não bastam.' : 'Só o código de barras é lido.') +
-      linha('Memória Global', app.memoriaLigada, app.memoriaLigada ? 'O SCAN consulta e ensina a memória sozinho.' : 'O SCAN funciona normalmente sem ela.') +
-      linha('Busca de EAN na internet', true, app.cosmosLigado ? 'Com o Cosmos (cadastro de EAN do Brasil).' : 'Sem o Cosmos.') +
-      '<div class="situacao"><div class="t">QTD/CAIXA</div><div class="s">Calculada pela planilha: soma da QTDE de todas as linhas da mesma caixa, refeita a cada produto salvo ou corrigido.</div></div>' +
-      blocoConta() + blocoAjuda() + blocoVelocidade() +
-      '<p class="dica">As chaves ficam no código do app e não aparecem aqui. SCAN versão ' + esc(app.versao) + '.</p>', true);
+    // Primeiro o que a pessoa usa (conta, código, aparência); detalhes técnicos ficam fechados no fim.
+    abrirPainel('config', 'Ajustes', blocoConta() + blocoAjuda() + blocoTema +
+      '<details class="mais"><summary>Detalhes técnicos</summary>' +
+      linha('Leitura por foto', app.iaLigada, app.iaLigada ? 'Usada só quando o código de barras não basta.' : 'Só o código de barras é lido.') +
+      linha('Memória de produtos', app.memoriaLigada, app.memoriaLigada ? 'O SCAN lembra produtos já lidos por outras pessoas.' : 'O SCAN funciona normalmente sem ela.') +
+      linha('Busca de EAN na internet', true, app.cosmosLigado ? 'Ligada.' : 'Só pela memória.') +
+      '<div class="situacao"><div class="t">Quantidade por caixa</div><div class="s">A planilha soma sozinha os produtos de cada caixa.</div></div>' +
+      blocoVelocidade() +
+      '<p class="dica">SCAN versão ' + esc(app.versao) + '.</p></details>', true);
     if (rolagem) $('painelCorpo').scrollTop = rolagem;
     if (!app.meuCodigo && !app.erroCodigo && !app.ajuda) buscarCodigo();
   }
@@ -2480,8 +2518,8 @@
     var link = linkApp();
     function feito() { aviso('Link copiado. Abra uma janela anônima, entre com a outra conta e cole o link.'); }
     try {
-      navigator.clipboard.writeText(link).then(feito, function () { window.prompt('Copie o link do SCAN:', link); });
-    } catch (e) { window.prompt('Copie o link do SCAN:', link); }
+      navigator.clipboard.writeText(link).then(feito, function () { perguntar('Copie o link do SCAN: ' + link, []); });
+    } catch (e) { perguntar('Copie o link do SCAN: ' + link, []); }
   }
   function blocoConta() {
     var usando = (app.email ? 'Usando <b>' + esc(app.email) + '</b>.' : 'O Google não informou a conta agora.') + ' As planilhas e as fotos são as desta conta.';
@@ -2489,9 +2527,8 @@
       return '<div class="situacao"><div class="t">Conta Google<button class="btn sec curto" type="button" id="btnTrocarConta">Trocar conta</button></div>' +
         '<div class="s">' + usando + ' Para usar outra, toque em Trocar conta e escolha (ou adicione) a conta.</div></div>';
     }
-    return '<div class="situacao"><div class="t">Conta Google<button class="btn sec curto" type="button" id="btnCopiarLink">Copiar link</button></div>' +
-      '<div class="s">' + usando + '</div>' +
-      '<div class="s">Para usar outra conta: o Google só abre o SCAN com a primeira conta do navegador. Copie o link, abra uma janela anônima (no PC: Ctrl+Shift+N) ou outro perfil do Chrome, entre com a outra conta e cole o link.</div></div>';
+    return '<div class="situacao"><div class="t">Conta Google<a class="btn sec curto" href="https://jpaapw-star.github.io/scan-app/" target="_top">Trocar conta</a></div>' +
+      '<div class="s">' + usando + ' Para usar outra, toque em Trocar conta: o SCAN abre no site, onde dá para escolher a conta.</div></div>';
   }
   function blocoAjuda() {
     if (app.ajuda) {
@@ -2515,8 +2552,8 @@
     }).catch(function (e) { app.erroCodigo = (e && e.message) || 'Não consegui criar o seu código agora.'; })
       .then(function () { buscandoCodigo = false; if (app.painel === 'config') abrirConfig(); });
   }
-  function trocarCodigo(botao) {
-    if (!window.confirm('Gerar um código novo? O código atual para de funcionar na hora. O que já está esperando aprovação continua.')) return;
+  function trocarCodigo(botao, ok) {
+    if (!ok) { perguntar('Gerar um código novo? O código atual para de funcionar na hora. O que já está esperando aprovação continua.', [{ t: 'Gerar código novo', f: function () { trocarCodigo(botao, true); } }]); return; }
     botao.disabled = true;
     if (!app.meuCodigo) { app.erroCodigo = ''; buscarCodigo(); return; }
     chamar('apiTrocarCodigo').then(function (r) { app.meuCodigo = r.meuCodigo; abrirConfig(); aviso('Código novo: ' + r.meuCodigo); })
@@ -2526,7 +2563,7 @@
   /** Painel para começar a ajudar: código da outra pessoa, seu nome e a aba. */
   function abrirAjudar(destino) {
     var a = app.ajuda || {};
-    var html = '<p class="dica">Digite o código que a pessoa vê em Situação e o seu nome (o nome aparece só para ela, na hora de aprovar).</p>' +
+    var html = '<p class="dica">Digite o código que a pessoa vê em Ajustes e o seu nome (o nome aparece só para ela, na hora de aprovar).</p>' +
       '<label class="rotulo" for="ajudaCodigo">Código</label><input class="entrada caixa" id="ajudaCodigo" autocapitalize="characters" autocomplete="off" placeholder="Ex.: K7P2QX" value="' + esc(a.codigo || lembrar('ajudaCodigo', '')) + '">' +
       '<label class="rotulo" for="ajudaNome">Seu nome</label><input class="entrada" id="ajudaNome" autocomplete="name" placeholder="Ex.: Ana" value="' + esc(a.nome || lembrar('ajudaNome', '')) + '">' +
       '<div class="estado-lista erro" id="erroAjuda"></div>';
@@ -2830,22 +2867,22 @@
     if (!app.planilha) { abrirPlanilhas(); aviso('Escolha a planilha primeiro.', true); return; }
     var atual = $('nfe').value.trim();
     abrirPainel('notas', 'Nota fiscal',
-      '<div class="secao">NFs desta entrada</div>' +
+      '<div class="secao">Notas chegando agora</div>' +
       '<div class="chips-nf" id="nfsEntrada"></div>' +
-      '<div class="filtros"><input class="entrada" id="nfeUsar" inputmode="numeric" autocomplete="off" placeholder="Número ou chave da NF"><button class="btn sec" type="button" id="btnNfeUsar">Adicionar</button></div>' +
-      '<p class="dica">Pode juntar várias NFs na mesma entrada: cada produto lido vai sozinho para a nota que tem aquele item (pelo EAN, serial ou modelo).</p>' +
+      '<div class="filtros"><input class="entrada" id="nfeUsar" inputmode="numeric" autocomplete="off" placeholder="Número da nota"><button class="btn sec" type="button" id="btnNfeUsar">Adicionar</button></div>' +
+      '<p class="dica">Chegaram várias notas juntas? Adicione todas: cada produto lido vai sozinho para a nota certa.</p>' +
       '<div id="nfAuditoria"></div>' +
-      '<div class="secao">Adicionar NF</div>' +
+      '<div class="secao">Adicionar nota</div>' +
       '<div class="modos">' +
-        '<button class="modo" type="button" id="btnNfFoto">' + ICONES_NF.foto + 'Foto do papel<small>DANFE</small></button>' +
-        '<button class="modo" type="button" id="btnNfPlanilha">' + ICONES_NF.planilha + 'Planilha<small>da NF</small></button>' +
-        '<button class="modo" type="button" id="btnNfXml">' + ICONES_NF.xml + 'XML ou PDF<small>da NF-e</small></button>' +
+        '<button class="modo" type="button" id="btnNfFoto">' + ICONES_NF.foto + 'Foto do papel<small>nota impressa</small></button>' +
+        '<button class="modo" type="button" id="btnNfPlanilha">' + ICONES_NF.planilha + 'Planilha<small>da nota</small></button>' +
+        '<button class="modo" type="button" id="btnNfXml">' + ICONES_NF.xml + 'Arquivo<small>XML ou PDF</small></button>' +
       '</div>' +
       '<div id="nfPlanilhaForm" class="oculto" style="display:grid;gap:8px"><button class="btn sec" type="button" id="btnNfArquivo">Escolher arquivo (.xlsx, .xls, .csv)</button>' +
         '<div class="filtros"><input class="entrada" id="nfLink" placeholder="ou cole o link do Google Planilhas" autocomplete="off"><button class="btn principal" type="button" id="btnNfLerPlanilha">Ler</button></div></div>' +
       '<p class="dica soltar-nf">No computador, você também pode arrastar o arquivo da NF para esta tela: foto, PDF, XML ou planilha.</p>' +
       '<div id="nfLeitura"></div>' +
-      '<div class="secao">NFs desta planilha</div><div id="nfLista" class="lista-planilhas"><div class="estado-lista">Carregando…</div></div>');
+      '<div class="secao">Notas já lançadas nesta planilha</div><div id="nfLista" class="lista-planilhas"><div class="estado-lista">Carregando…</div></div>');
     renderNfsEntrada();
     carregarNotas();
     numerosNf(atual).forEach(auditarNf);
@@ -2902,8 +2939,8 @@
    * Fecha a NF: o SCAN confere de novo, gera o relatório em PDF (faltas, sobras, o que veio diferente,
    * com os links das fotos) e a NF deixa de receber produto. Sai da entrada atual.
    */
-  function fecharNf(numero, botao) {
-    if (!window.confirm('Fechar a NF ' + numero + '? O SCAN gera o relatório e a nota para de receber produtos (dá para reabrir).')) return;
+  function fecharNf(numero, botao, ok) {
+    if (!ok) { perguntar('Fechar a nota ' + numero + '? O SCAN gera o relatório e a nota para de receber produtos (dá para reabrir).', [{ t: 'Fechar a nota', f: function () { fecharNf(numero, botao, true); } }]); return; }
     if (botao) { botao.disabled = true; botao.textContent = 'Gerando o relatório…'; }
     chamar('apiFecharNf', { planilhaId: app.planilha.id, aba: app.planilha.aba, numero: numero }).then(function (r) {
       var l = numerosNf($('nfe').value);
@@ -2938,8 +2975,8 @@
     }).catch(function (e) { if (botao) botao.disabled = false; alvo.innerHTML = ''; aviso(e.message, true); });
   }
 
-  function excluirNf(numero, botao) {
-    if (!window.confirm('Excluir a NF ' + numero + ' desta planilha? Os itens e a auditoria dela saem; os produtos já lidos continuam na planilha.')) return;
+  function excluirNf(numero, botao, ok) {
+    if (!ok) { perguntar('Excluir a nota ' + numero + ' desta planilha? A lista de itens e a conferência dela saem; os produtos já lidos continuam na planilha.', [{ t: 'Excluir', perigo: true, f: function () { excluirNf(numero, botao, true); } }]); return; }
     if (botao) botao.disabled = true;
     chamar('apiExcluirNf', { planilhaId: app.planilha.id, aba: app.planilha.aba, numero: numero }).then(function () {
       var l = numerosNf($('nfe').value);
@@ -3116,8 +3153,9 @@
       if (r.jaExistia) {
         botao.disabled = false; botao.textContent = 'Guardar e auditar';
         // Outra folha da mesma nota é o caso comum: juntar vem primeiro; trocar só se a pessoa pedir.
-        if (window.confirm('A NF ' + r.nf.numero + ' já está guardada. Esta é outra folha da mesma nota?\n\nOK: juntar os itens desta folha aos que já estão.\nCancelar: ver outras opções.')) salvarNf(false, true);
-        else if (window.confirm('Trocar todos os itens da NF ' + r.nf.numero + ' pelos desta leitura?')) salvarNf(true);
+        perguntar('A nota ' + r.nf.numero + ' já está guardada. Esta é outra folha da mesma nota?', [
+          { t: 'Juntar os itens', f: function () { salvarNf(false, true); } },
+          { t: 'Trocar todos os itens', f: function () { salvarNf(true); } }]);
         return;
       }
       nfLida = null;
@@ -3136,6 +3174,7 @@
 
   // ---------- histórico (lido da planilha) ----------
   function abrirHistorico() {
+    if (!app.planilha && !app.ajuda) { abrirPlanilhas(); aviso('Escolha a planilha primeiro.', true); return; }
     if (app.ajuda) { aviso('Ajudando outra pessoa, você só lê e manda produtos.', true); return; }
     abrirPainel('historico', 'Histórico',
       '<div class="filtros"><input class="entrada" id="busca" type="search" placeholder="Buscar produto, serial, EAN ou caixa…" autocomplete="off"></div>' +
@@ -3229,7 +3268,7 @@
       carregarHistorico();
     }).catch(function (e) {
       b.disabled = false; b.textContent = 'Salvar correção';
-      if (e.codigo === 'EAN_INVALIDO') { if (confirm(e.message + '\n\nSalvar mesmo assim?')) salvarCorrecao(true); return; }
+      if (e.codigo === 'EAN_INVALIDO') { perguntar(e.message + ' Salvar mesmo assim?', [{ t: 'Salvar assim', f: function () { salvarCorrecao(true); } }]); return; }
       aviso(e.message, true);
       if (e.codigo === 'REGISTRO_APAGADO' || e.codigo === 'LINHA_MUDOU') { app.historico.editando = null; carregarHistorico(); }
     });
@@ -3263,7 +3302,7 @@
     });
   }
 
-  /** Bip curto ao salvar e dois graves quando precisa conferir (dá para desligar em Situação). */
+  /** Bip curto ao salvar e dois graves quando precisa conferir (dá para desligar em Ajustes). */
   var somCtx = null, ultimoBip = 0;
   function somLigado() { return lembrar('som', true) !== false; }
   function destravarSom() {
@@ -3902,8 +3941,20 @@
       if (app.planilha) chamar('apiEscolherPlanilha', app.planilha.id, app.planilha.aba, naoSalvos()).then(function (x) { definirPlanilha(x.planilha); }).catch(function () { /* segue com o que já sabe */ });
       if (!app.planilha && app.planilhas.length) definirPlanilha(app.planilhas[0]);
       if (!app.planilha) abrirPlanilhas();
+      else if (buscaDoPainel) buscarVindoDoPainel();
       else if (!$('caixa').value) $('caixa').focus();
     }).catch(function (e) { aviso(e.message, true); });
+  }
+
+  // Busca vinda do painel "Meus apps" (?q=serial): abre o Histórico já procurando.
+  var buscaDoPainel = '';
+  try { buscaDoPainel = (new URLSearchParams(location.search).get('q') || '').slice(0, 80); } catch (e) {}
+  try { if (!buscaDoPainel && window.google && google.script && google.script.url) google.script.url.getLocation(function (l) { buscaDoPainel = String((l.parameter || {}).q || '').slice(0, 80); if (buscaDoPainel && app.planilha) buscarVindoDoPainel(); }); } catch (e) {}
+  function buscarVindoDoPainel() {
+    if (!buscaDoPainel || app.ajuda) return;
+    var t = buscaDoPainel; buscaDoPainel = '';
+    abrirHistorico();
+    if ($('busca')) { $('busca').value = t; carregarHistorico(); }
   }
 
   window.SCAN = { app: app, lerCodigos: lerCodigos };   // para os testes automáticos
